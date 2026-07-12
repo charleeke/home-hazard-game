@@ -339,7 +339,7 @@
                 rooms.forEach((room, i) => {
                     listDiv.innerHTML += `
                         <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <img src="${room.imageUrl}" class="w-16 h-16 object-cover rounded bg-slate-200">
+                            <img src="${room.imageUrl}" class="w-16 h-16 object-cover rounded bg-slate-200" onerror="this.src='https://placehold.co/64?text=No+Image'">
                             <div class="flex-grow overflow-hidden">
                                 <h4 class="font-bold text-sm truncate">${room.roomType || 'ด่านที่ '+(i+1)}</h4>
                                 <p class="text-xs text-slate-500">จุดเสี่ยง: ${room.hazards ? room.hazards.length : 0} จุด</p>
@@ -429,13 +429,22 @@
                 // Load Image
                 sImg = new Image();
                 sImg.crossOrigin = "Anonymous";
+                
+                // ถ้ารูปโหลดสำเร็จ
                 sImg.onload = () => {
                     sCanvas.width = sImg.width; sCanvas.height = sImg.height;
                     renderStudent();
                     showView('student-view');
                     btnContent.innerHTML = originalHTML; // คืนค่าปุ่ม
                 };
-                sImg.onerror = () => { throw new Error("ไม่สามารถโหลดรูปภาพได้ (ปัญหาการแชร์ Drive)"); };
+                
+                // ถ้ารูปโหลดไม่ขึ้น (ป้องกันการหมุนค้าง)
+                sImg.onerror = () => { 
+                    document.getElementById('homeWarning').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> เข้าสู่ระบบไม่สำเร็จ: ไม่สามารถโหลดรูปภาพได้ (โปรดตรวจสอบสิทธิ์การแชร์ของ Google Drive)`;
+                    document.getElementById('homeWarning').classList.remove('hidden-section');
+                    btnContent.innerHTML = originalHTML; // คืนค่าปุ่มให้กลับมากดได้อีกครั้ง
+                };
+                
                 sImg.src = randomRoom.imageUrl;
 
             } catch (error) {
