@@ -160,7 +160,11 @@
             </div>
             
             <div class="bg-white p-2 rounded-2xl shadow-xl border border-slate-200">
-                <canvas id="studentCanvas" class="w-full h-auto rounded-xl"></canvas>
+                <!-- เทคนิค Overlay: เรียงรูปภาพไว้ด้านหลัง และวาง Canvas โปร่งใสทับด้านหน้า -->
+                <div class="relative w-full leading-none">
+                    <img id="studentImgBase" class="w-full h-auto rounded-xl block" alt="Room Image">
+                    <canvas id="studentCanvas" class="absolute top-0 left-0 w-full h-full rounded-xl cursor-crosshair"></canvas>
+                </div>
             </div>
             <p class="text-center text-slate-500 mt-4 animate-pulse">👆 คลิกบริเวณที่คิดว่าเป็นความเสี่ยง (คลิกถูก +10 | ผิด -5)</p>
         </div>
@@ -395,10 +399,10 @@
         }
 
 
-        // --- Student Game Mode ---
+        // --- Student Game Mode (ปรับเป็นระบบ Overlay) ---
         const sCanvas = document.getElementById('studentCanvas');
         const sCtx = sCanvas.getContext('2d');
-        let sImg = new Image();
+        const sImgBase = document.getElementById('studentImgBase'); // ใช้ Tag Img ในการแสดงผลแทน
 
         async function startStudentMode(event) {
             document.getElementById('homeWarning').classList.add('hidden-section');
@@ -426,32 +430,35 @@
                 document.getElementById('studentFound').innerText = hazardsFound;
                 document.getElementById('studentTotal').innerText = studentHazards.length;
 
-                // Load Image
-                sImg = new Image();
-                // นำ crossOrigin = "Anonymous" ออก เพื่อป้องกันการถูกบล็อกจากนโยบาย CORS ของ Google Drive
-                // sImg.crossOrigin = "Anonymous";
-                
-                // ถ้ารูปโหลดสำเร็จ
-                sImg.onload = () => {
-                    sCanvas.width = sImg.width; sCanvas.height = sImg.height;
+                // เมื่อโหลดรูปเสร็จ ให้ Canvas ตั้งค่าขนาดตามรูป และรอรับการคลิก
+                sImgBase.onload = () => {
+                    sCanvas.width = sImgBase.naturalWidth || 800; 
+                    sCanvas.height = sImgBase.naturalHeight || 600;
                     renderStudent();
                     showView('student-view');
                     btnContent.innerHTML = originalHTML; // คืนค่าปุ่ม
                 };
                 
-                // ถ้ารูปโหลดไม่ขึ้น (ป้องกันการหมุนค้าง)
-                sImg.onerror = () => { 
-                    document.getElementById('homeWarning').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> เข้าสู่ระบบไม่สำเร็จ: ไม่สามารถโหลดรูปภาพได้ (โปรดตรวจสอบสิทธิ์การแชร์ของ Google Drive)`;
+                // ถ้ารูปโหลดไม่ขึ้น
+                sImgBase.onerror = () => { 
+                    document.getElementById('homeWarning').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> เข้าสู่ระบบไม่สำเร็จ: ไม่สามารถแสดงรูปภาพได้ (โปรดให้นักเรียนล็อกอินบัญชี Google ของสถานศึกษาในเบราว์เซอร์นี้ด้วย)`;
                     document.getElementById('homeWarning').classList.remove('hidden-section');
-                    btnContent.innerHTML = originalHTML; // คืนค่าปุ่มให้กลับมากดได้อีกครั้ง
+                    btnContent.innerHTML = originalHTML; 
                 };
                 
-                sImg.src = randomRoom.imageUrl;
+                // แปลง URL รูปภาพเพื่อหลบเลี่ยงการบล็อกจาก Google Drive บางประการ
+                let finalUrl = randomRoom.imageUrl;
+                if (finalUrl.includes('drive.google.com/uc?id=')) {
+                    const fileId = finalUrl.split('id=')[1].split('&')[0];
+                    finalUrl = `https://lh3.googleusercontent.com/d/${fileId}`; // โหลดผ่าน CDN โดยตรง
+                }
+                
+                sImgBase.src = finalUrl;
 
             } catch (error) {
                 document.getElementById('homeWarning').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> เข้าสู่ระบบไม่สำเร็จ: ${error.message}`;
                 document.getElementById('homeWarning').classList.remove('hidden-section');
-                btnContent.innerHTML = originalHTML; // คืนค่าปุ่ม
+                btnContent.innerHTML = originalHTML; 
             }
         }
 
@@ -491,8 +498,10 @@
         });
 
         function renderStudent() {
+            // เคลียร์ Canvas ให้โปร่งใส
             sCtx.clearRect(0,0, sCanvas.width, sCanvas.height);
-            if(sImg.src) sCtx.drawImage(sImg, 0, 0, sCanvas.width, sCanvas.height);
+            
+            // วาดเฉพาะสี่เหลี่ยมจุดเสี่ยง (รูปภาพจะแสดงอยู่ด้านหลังผ่านแท็ก <img> แทน)
             studentHazards.forEach(h => {
                 if(h.isFound) {
                     const px = h.boundingBox.x * sCanvas.width, py = h.boundingBox.y * sCanvas.height;
