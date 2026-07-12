@@ -22,10 +22,22 @@
         .hidden-section { display: none !important; }
         .fade-in { animation: fadeIn 0.4s ease-in; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); display: flex; justify-content: center; align-items: center; z-index: 50; }
+        
+        /* Modal Styles */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: flex; justify-content: center; align-items: center; z-index: 50; }
         .modal-content { background: white; padding: 2rem; border-radius: 1rem; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        
+        /* Canvas Styles */
         canvas { cursor: crosshair; display: block; max-width: 100%; margin: 0 auto;}
         #teacherCanvas { border: 2px dashed #cbd5e1; background: #fff; }
+        
+        /* Shake Animation for Wrong Clicks */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .shake-animation { animation: shake 0.4s ease-in-out; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col font-sans text-slate-800">
@@ -36,6 +48,10 @@
         // ==========================================
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycby1fv9JRaEEa3Lb58YJfZ6hkrC40Q6jfg9L9RJmEAQ2MyF6NAQUyMMlPmRJm88EO_YTGA/exec";
     </script>
+
+    <!-- Audio Elements for Feedback -->
+    <audio id="sndCorrect" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" preload="auto"></audio>
+    <audio id="sndWrong" src="https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3" preload="auto"></audio>
 
     <!-- Top Navigation -->
     <nav class="bg-white shadow-sm border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
@@ -64,7 +80,7 @@
                     <div id="studentBtnContent" class="flex flex-col h-full w-full pointer-events-none">
                         <i class="fa-solid fa-user-graduate text-5xl text-secondary mb-4 group-hover:scale-110 transition-transform"></i>
                         <h3 class="text-2xl font-bold mb-2">Student Mode</h3>
-                        <p class="text-slate-500 flex-grow">เข้าสู่ระบบประเมินความเสี่ยง ระบบจะสุ่มด่านจากคลังข้อสอบ</p>
+                        <p class="text-slate-500 flex-grow">เริ่มเกมประเมินความเสี่ยง ตะลุย 7 ห้องภายในบ้าน</p>
                         <div class="mt-4 text-secondary font-bold">เข้าเรียน <i class="fa-solid fa-arrow-right"></i></div>
                     </div>
                 </button>
@@ -98,9 +114,17 @@
                 <button onclick="loadTeacherDashboard()" class="bg-blue-100 text-primary px-4 py-2 rounded-full font-bold hover:bg-blue-200"><i class="fa-solid fa-rotate"></i> โหลดข้อมูล</button>
             </div>
 
-            <!-- Dashboard -->
+            <!-- Dashboard Settings & List -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                <h3 class="text-xl font-bold mb-4 border-b pb-2"><i class="fa-solid fa-server text-secondary"></i> คลังแบบทดสอบในระบบ</h3>
+                <div class="flex justify-between items-center border-b pb-4 mb-4">
+                    <h3 class="text-xl font-bold"><i class="fa-solid fa-server text-secondary"></i> คลังแบบทดสอบในระบบ</h3>
+                    <!-- สวิตช์ตั้งค่าการสุ่ม -->
+                    <div class="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-lg">
+                        <input type="checkbox" id="randomizeToggle" onchange="toggleRandomize(this.checked)" class="w-5 h-5 cursor-pointer accent-primary">
+                        <label for="randomizeToggle" class="font-bold text-sm cursor-pointer">สุ่มภาพข้อสอบในแต่ละห้อง</label>
+                    </div>
+                </div>
+                
                 <div id="dashboardLoading" class="text-center py-4 text-slate-400 hidden-section"><i class="fa-solid fa-spinner fa-spin text-2xl"></i> กำลังโหลดข้อมูล...</div>
                 <div id="dashboardList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-64 overflow-y-auto pr-2">
                     <p class="text-sm text-slate-400 italic col-span-full">ยังไม่มีข้อสอบในระบบ</p>
@@ -115,11 +139,15 @@
                     <label class="block mb-2 font-bold text-sm">อัปโหลดรูปภาพห้อง</label>
                     <input type="file" id="imageUpload" accept="image/*" class="w-full p-2 border rounded mb-4 text-sm bg-slate-50">
                     
-                    <label class="block mb-2 font-bold text-sm">หมวดหมู่</label>
-                    <select id="roomCategory" class="w-full p-2 border rounded mb-4">
-                        <option value="ห้องนั่งเล่น">ห้องนั่งเล่น</option>
-                        <option value="ห้องน้ำ">ห้องน้ำ</option>
-                        <option value="ห้องนอน">ห้องนอน</option>
+                    <label class="block mb-2 font-bold text-sm">หมวดหมู่ 7 ห้อง</label>
+                    <select id="roomCategory" class="w-full p-2 border rounded mb-4 font-bold text-primary">
+                        <option value="ห้องนั่งเล่น">1. ห้องนั่งเล่น</option>
+                        <option value="ห้องครัว">2. ห้องครัว</option>
+                        <option value="ห้องน้ำ">3. ห้องน้ำ</option>
+                        <option value="ห้องนอน">4. ห้องนอน</option>
+                        <option value="บันได">5. บันได</option>
+                        <option value="โรงรถ">6. โรงรถ</option>
+                        <option value="บริเวณรอบบ้าน">7. บริเวณรอบบ้าน</option>
                     </select>
 
                     <label class="block mb-2 font-bold text-sm">เพิ่มคำอธิบายความเสี่ยง</label>
@@ -151,19 +179,35 @@
 
         <!-- VIEW 4: Student Game -->
         <div id="student-view" class="hidden-section w-full max-w-4xl fade-in">
-            <div class="flex justify-between items-end mb-4">
-                <h2 class="text-2xl font-bold text-secondary"><i class="fa-solid fa-gamepad"></i> ประเมินความเสี่ยง</h2>
+            
+            <!-- Navigation for 7 Rooms -->
+            <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4 border border-slate-200">
+                <button id="prevRoomBtn" onclick="navigateRoom(-1)" class="px-4 py-2 bg-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-arrow-left"></i> ก่อนหน้า
+                </button>
+                
+                <h3 id="roomProgressText" class="text-xl font-bold text-primary text-center flex-grow">ห้องที่ 1/7: ห้องนั่งเล่น</h3>
+                
+                <button id="nextRoomBtn" onclick="navigateRoom(1)" class="px-4 py-2 bg-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-300 transition-colors">
+                    ข้าม / ถัดไป <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Score Display -->
+            <div class="flex justify-between items-end mb-4 px-2">
+                <h2 class="text-lg font-bold text-secondary"><i class="fa-solid fa-search"></i> ค้นหาจุดเสี่ยงให้ครบ</h2>
                 <div class="flex gap-4">
-                    <div class="bg-slate-100 px-4 py-2 rounded-full font-bold">คะแนน: <span id="studentScore" class="text-primary">0</span></div>
-                    <div class="bg-slate-100 px-4 py-2 rounded-full font-bold">จุดเสี่ยง: <span id="studentFound">0</span> / <span id="studentTotal">0</span></div>
+                    <div class="bg-primary text-white px-4 py-2 rounded-full font-bold shadow-md">คะแนนรวม: <span id="globalScoreDisplay" class="text-xl">0</span></div>
+                    <div class="bg-slate-100 px-4 py-2 rounded-full font-bold">พบแล้ว: <span id="studentFound">0</span> / <span id="studentTotal">0</span></div>
                 </div>
             </div>
             
-            <div class="bg-white p-2 rounded-2xl shadow-xl border border-slate-200">
-                <!-- เทคนิค Overlay: เรียงรูปภาพไว้ด้านหลัง และวาง Canvas โปร่งใสทับด้านหน้า -->
-                <div class="relative w-full leading-none">
-                    <img id="studentImgBase" class="w-full h-auto rounded-xl block" alt="Room Image">
-                    <canvas id="studentCanvas" class="absolute top-0 left-0 w-full h-full rounded-xl cursor-crosshair"></canvas>
+            <div id="canvasWrapper" class="bg-white p-2 rounded-2xl shadow-xl border border-slate-200">
+                <!-- เทคนิค Overlay -->
+                <div class="relative w-full leading-none rounded-xl overflow-hidden bg-slate-100 min-h-[400px] flex items-center justify-center">
+                    <h3 id="noDataText" class="absolute text-slate-400 font-bold text-xl hidden-section">ไม่มีข้อมูลข้อสอบสำหรับห้องนี้</h3>
+                    <img id="studentImgBase" class="w-full h-auto block" alt="Room Image">
+                    <canvas id="studentCanvas" class="absolute top-0 left-0 w-full h-full cursor-crosshair"></canvas>
                 </div>
             </div>
             <p class="text-center text-slate-500 mt-4 animate-pulse">👆 คลิกบริเวณที่คิดว่าเป็นความเสี่ยง (คลิกถูก +10 | ผิด -5)</p>
@@ -171,7 +215,7 @@
 
     </main>
 
-    <!-- Modals -->
+    <!-- Generic Message Modal -->
     <div id="messageModal" class="modal-overlay hidden-section">
         <div class="modal-content">
             <i id="msgModalIcon" class="fa-solid fa-circle-info text-5xl text-primary mb-4"></i>
@@ -181,12 +225,65 @@
         </div>
     </div>
 
-    <script>
-        // --- Core Application Logic ---
-        let appData = { roomType: "", imageBase64: "", mimeType: "", fileName: "", hazards: [] };
-        let studentHazards = [];
-        let score = 0; let hazardsFound = 0;
+    <!-- Final Summary Modal -->
+    <div id="summaryModal" class="modal-overlay hidden-section">
+        <div class="modal-content !max-w-md">
+            <i class="fa-solid fa-trophy text-7xl text-warning mb-6"></i>
+            <h2 class="text-3xl font-bold text-primary mb-2">สรุปผลการประเมิน</h2>
+            <p class="text-slate-500 mb-6">คุณทำการประเมินครบทั้ง 7 บริเวณแล้ว!</p>
+            
+            <div class="bg-slate-50 p-6 rounded-xl mb-6 text-left border border-slate-200 shadow-inner">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-2">
+                    <span class="text-lg font-bold text-slate-600"><i class="fa-solid fa-clock text-slate-400"></i> เวลาที่ใช้ทั้งหมด</span>
+                    <span id="summaryTime" class="text-xl font-bold text-primary">00:00</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-lg font-bold text-slate-600"><i class="fa-solid fa-star text-warning"></i> คะแนนรวม</span>
+                    <span id="summaryScore" class="text-3xl font-bold text-secondary">0</span>
+                </div>
+            </div>
+            <button onclick="finishGame()" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-transform hover:scale-105">กลับหน้าหลัก</button>
+        </div>
+    </div>
 
+    <script>
+        // --- Core Constants & State Management ---
+        const ROOM_SEQUENCE = ["ห้องนั่งเล่น", "ห้องครัว", "ห้องน้ำ", "ห้องนอน", "บันได", "โรงรถ", "บริเวณรอบบ้าน"];
+        
+        let appData = { roomType: "ห้องนั่งเล่น", imageBase64: "", mimeType: "", fileName: "", hazards: [] };
+        let studentHazards = [];
+        
+        // Game State
+        let gameSequenceData = []; // เก็บข้อสอบทั้ง 7 ห้อง
+        let currentRoomIndex = 0;
+        let globalScore = 0; 
+        let hazardsFound = 0;
+        let gameStartTime = 0;
+
+        // Load Randomize Setting
+        let isRandomize = localStorage.getItem('pt_randomize') === 'true';
+        document.getElementById('randomizeToggle').checked = isRandomize;
+
+        function toggleRandomize(checked) {
+            isRandomize = checked;
+            localStorage.setItem('pt_randomize', checked);
+        }
+
+        // --- Audio Functions ---
+        const sndCorrect = document.getElementById('sndCorrect');
+        const sndWrong = document.getElementById('sndWrong');
+
+        function playSound(type) {
+            try {
+                if(type === 'correct') {
+                    sndCorrect.currentTime = 0; sndCorrect.play();
+                } else {
+                    sndWrong.currentTime = 0; sndWrong.play();
+                }
+            } catch(e) { console.log("Audio play prevented by browser"); }
+        }
+
+        // --- View Routing ---
         function showView(viewId) {
             ['home-view', 'login-view', 'teacher-view', 'student-view'].forEach(id => {
                 document.getElementById(id).classList.add('hidden-section');
@@ -220,14 +317,8 @@
                     body: options.body ? JSON.stringify(options.body) : undefined
                 });
                 const text = await response.text();
-                try {
-                    return JSON.parse(text);
-                } catch(e) {
-                    throw new Error("ข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง: " + text.substring(0, 50));
-                }
-            } catch (err) {
-                throw new Error("ล้มเหลวในการเชื่อมต่อกับเซิร์ฟเวอร์: " + err.message);
-            }
+                try { return JSON.parse(text); } catch(e) { throw new Error("ข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง: " + text.substring(0, 50)); }
+            } catch (err) { throw new Error("ล้มเหลวในการเชื่อมต่อ: " + err.message); }
         }
 
 
@@ -319,7 +410,7 @@
             const listDiv = document.getElementById('hazardList');
             listDiv.innerHTML = '';
             appData.hazards.forEach((h, i) => {
-                listDiv.innerHTML += `<div class="bg-blue-50 text-blue-800 text-sm px-3 py-1 rounded-full border border-blue-200">
+                listDiv.innerHTML += `<div class="bg-blue-50 text-blue-800 text-sm px-3 py-1 rounded-full border border-blue-200 flex items-center mb-2">
                     ${i+1}. ${h.riskType} <button onclick="removeHazard('${h.id}')" class="ml-2 text-red-500 hover:text-red-700"><i class="fa-solid fa-xmark"></i></button>
                 </div>`;
             });
@@ -345,7 +436,7 @@
                         <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                             <img src="${room.imageUrl}" class="w-16 h-16 object-cover rounded bg-slate-200" onerror="this.src='https://placehold.co/64?text=No+Image'">
                             <div class="flex-grow overflow-hidden">
-                                <h4 class="font-bold text-sm truncate">${room.roomType || 'ด่านที่ '+(i+1)}</h4>
+                                <h4 class="font-bold text-sm truncate text-primary">${room.roomType || 'ไม่มีหมวดหมู่'}</h4>
                                 <p class="text-xs text-slate-500">จุดเสี่ยง: ${room.hazards ? room.hazards.length : 0} จุด</p>
                             </div>
                             <button onclick="deleteRoom('${room.id}')" class="bg-red-100 text-red-600 p-2 rounded-lg hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>
@@ -399,10 +490,10 @@
         }
 
 
-        // --- Student Game Mode (ปรับเป็นระบบ Overlay) ---
+        // --- Student Game Mode (Sequential 7 Rooms) ---
         const sCanvas = document.getElementById('studentCanvas');
         const sCtx = sCanvas.getContext('2d');
-        const sImgBase = document.getElementById('studentImgBase'); // ใช้ Tag Img ในการแสดงผลแทน
+        const sImgBase = document.getElementById('studentImgBase'); 
 
         async function startStudentMode(event) {
             document.getElementById('homeWarning').classList.add('hidden-section');
@@ -411,49 +502,32 @@
             
             btnContent.innerHTML = `<div class="flex flex-col items-center justify-center h-full">
                 <i class="fa-solid fa-spinner fa-spin text-5xl text-secondary mb-4"></i>
-                <h3 class="text-2xl font-bold">กำลังเชื่อมต่อข้อมูล...</h3>
+                <h3 class="text-2xl font-bold">กำลังเตรียมห้องทั้ง 7...</h3>
             </div>`;
             
             try {
-                const rooms = await fetchFromGoogle();
-                
-                if(!Array.isArray(rooms) || rooms.length === 0) {
-                    throw new Error("ไม่มีข้อสอบในระบบ");
-                }
+                const allData = await fetchFromGoogle();
+                if(!Array.isArray(allData) || allData.length === 0) throw new Error("ยังไม่มีข้อสอบในระบบ");
 
-                // สุ่มด่าน
-                const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
-                
-                studentHazards = (randomRoom.hazards || []).map(h => ({...h, isFound: false}));
-                score = 0; hazardsFound = 0;
-                document.getElementById('studentScore').innerText = score;
-                document.getElementById('studentFound').innerText = hazardsFound;
-                document.getElementById('studentTotal').innerText = studentHazards.length;
+                // จัดคิว 7 ห้อง
+                gameSequenceData = ROOM_SEQUENCE.map(roomName => {
+                    const matches = allData.filter(r => r.roomType === roomName);
+                    if (matches.length === 0) return null; // ไม่มีข้อสอบหมวดนี้
+                    
+                    if (isRandomize) {
+                        return matches[Math.floor(Math.random() * matches.length)]; // สุ่มจากที่มี
+                    }
+                    return matches[0]; // ไม่สุ่ม เอาอันแรกที่เจอ
+                });
 
-                // เมื่อโหลดรูปเสร็จ ให้ Canvas ตั้งค่าขนาดตามรูป และรอรับการคลิก
-                sImgBase.onload = () => {
-                    sCanvas.width = sImgBase.naturalWidth || 800; 
-                    sCanvas.height = sImgBase.naturalHeight || 600;
-                    renderStudent();
-                    showView('student-view');
-                    btnContent.innerHTML = originalHTML; // คืนค่าปุ่ม
-                };
+                // Reset Game States
+                globalScore = 0; 
+                gameStartTime = Date.now();
                 
-                // ถ้ารูปโหลดไม่ขึ้น
-                sImgBase.onerror = () => { 
-                    document.getElementById('homeWarning').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> เข้าสู่ระบบไม่สำเร็จ: ไม่สามารถแสดงรูปภาพได้ (โปรดให้นักเรียนล็อกอินบัญชี Google ของสถานศึกษาในเบราว์เซอร์นี้ด้วย)`;
-                    document.getElementById('homeWarning').classList.remove('hidden-section');
-                    btnContent.innerHTML = originalHTML; 
-                };
+                showView('student-view');
+                btnContent.innerHTML = originalHTML; // คืนค่าปุ่ม
                 
-                // แปลง URL รูปภาพเพื่อหลบเลี่ยงการบล็อกจาก Google Drive บางประการ
-                let finalUrl = randomRoom.imageUrl;
-                if (finalUrl.includes('drive.google.com/uc?id=')) {
-                    const fileId = finalUrl.split('id=')[1].split('&')[0];
-                    finalUrl = `https://lh3.googleusercontent.com/d/${fileId}`; // โหลดผ่าน CDN โดยตรง
-                }
-                
-                sImgBase.src = finalUrl;
+                loadStudentRoom(0); // เริ่มห้องที่ 1
 
             } catch (error) {
                 document.getElementById('homeWarning').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> เข้าสู่ระบบไม่สำเร็จ: ${error.message}`;
@@ -462,7 +536,82 @@
             }
         }
 
+        function loadStudentRoom(index) {
+            currentRoomIndex = index;
+            const roomData = gameSequenceData[index];
+            const isLastRoom = (index === ROOM_SEQUENCE.length - 1);
+            
+            // อัปเดต UI แถบนำทาง
+            document.getElementById('roomProgressText').innerText = `ห้องที่ ${index + 1}/7: ${ROOM_SEQUENCE[index]}`;
+            document.getElementById('prevRoomBtn').disabled = (index === 0);
+            
+            const nextBtn = document.getElementById('nextRoomBtn');
+            if (isLastRoom) {
+                nextBtn.innerHTML = 'สรุปผล <i class="fa-solid fa-flag-checkered"></i>';
+                nextBtn.className = "px-6 py-2 bg-warning text-white rounded-lg font-bold shadow-md hover:bg-yellow-600 transition-colors";
+            } else {
+                nextBtn.innerHTML = 'ข้าม / ถัดไป <i class="fa-solid fa-arrow-right"></i>';
+                nextBtn.className = "px-4 py-2 bg-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-300 transition-colors";
+            }
+
+            // รีเซ็ตการแสดงผล
+            sCtx.clearRect(0,0, sCanvas.width, sCanvas.height);
+            document.getElementById('noDataText').classList.add('hidden-section');
+
+            if (!roomData) {
+                // กรณีห้องนั้นไม่มีข้อสอบในระบบ
+                sImgBase.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // transparent
+                document.getElementById('noDataText').classList.remove('hidden-section');
+                studentHazards = [];
+                hazardsFound = 0;
+                document.getElementById('studentFound').innerText = 0;
+                document.getElementById('studentTotal').innerText = 0;
+                document.getElementById('globalScoreDisplay').innerText = globalScore;
+                return;
+            }
+
+            // ตั้งค่าจุดเสี่ยงของด่านนี้
+            studentHazards = (roomData.hazards || []).map(h => ({...h, isFound: false}));
+            hazardsFound = 0;
+            
+            document.getElementById('studentFound').innerText = hazardsFound;
+            document.getElementById('studentTotal').innerText = studentHazards.length;
+            document.getElementById('globalScoreDisplay').innerText = globalScore;
+
+            // โหลดรูปภาพ
+            sImgBase.onload = () => {
+                sCanvas.width = sImgBase.naturalWidth || 800; 
+                sCanvas.height = sImgBase.naturalHeight || 600;
+                renderStudent();
+            };
+            
+            sImgBase.onerror = () => { 
+                document.getElementById('noDataText').innerText = "ไม่สามารถแสดงรูปภาพได้ (โปรดตรวจสอบสิทธิ์)";
+                document.getElementById('noDataText').classList.remove('hidden-section');
+            };
+            
+            let finalUrl = roomData.imageUrl;
+            if (finalUrl.includes('drive.google.com/uc?id=')) {
+                const fileId = finalUrl.split('id=')[1].split('&')[0];
+                finalUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+            }
+            sImgBase.src = finalUrl;
+        }
+
+        // --- Navigation ---
+        function navigateRoom(direction) {
+            let newIndex = currentRoomIndex + direction;
+            if (newIndex >= 0 && newIndex < ROOM_SEQUENCE.length) {
+                loadStudentRoom(newIndex);
+            } else if (newIndex >= ROOM_SEQUENCE.length) {
+                showSummary();
+            }
+        }
+
+        // --- Game Interactions ---
         sCanvas.addEventListener('click', (e) => {
+            if (studentHazards.length === 0) return; // ไม่มีข้อมูลให้กด
+            
             const rect = sCanvas.getBoundingClientRect();
             const clickX = (e.clientX - rect.left) / rect.width;
             const clickY = (e.clientY - rect.top) / rect.height;
@@ -477,31 +626,29 @@
             }
 
             if(hit) {
-                hit.isFound = true; score += 10; hazardsFound++;
+                hit.isFound = true; 
+                globalScore += 10; 
+                hazardsFound++;
+                playSound('correct');
                 showModal("ถูกต้อง!", `<strong class="text-secondary">${hit.riskType}</strong><br><br><span class="text-sm text-slate-500">${hit.advice}</span>`, "success");
             } else {
-                score = Math.max(0, score - 5);
-                sCanvas.style.transform = "translateX(10px)";
-                setTimeout(() => sCanvas.style.transform = "translateX(-10px)", 50);
-                setTimeout(() => sCanvas.style.transform = "translateX(0)", 100);
+                globalScore = Math.max(0, globalScore - 5);
+                playSound('wrong');
+                
+                // สั่นหน้าจอ (Shake Effect)
+                const canvasWrapper = document.getElementById('canvasWrapper');
+                canvasWrapper.classList.remove('shake-animation');
+                void canvasWrapper.offsetWidth; // Trigger reflow
+                canvasWrapper.classList.add('shake-animation');
             }
             
-            document.getElementById('studentScore').innerText = score;
+            document.getElementById('globalScoreDisplay').innerText = globalScore;
             document.getElementById('studentFound').innerText = hazardsFound;
             renderStudent();
-            
-            if(hazardsFound === studentHazards.length && studentHazards.length > 0) {
-                setTimeout(() => {
-                    showModal("จบเกม!", `<div class="text-2xl mt-2 text-primary font-bold">ได้คะแนน ${score} คะแนน</div><br>ยอดเยี่ยมมาก คุณประเมินความเสี่ยงครบทุกจุดแล้ว`, "success");
-                }, 500);
-            }
         });
 
         function renderStudent() {
-            // เคลียร์ Canvas ให้โปร่งใส
             sCtx.clearRect(0,0, sCanvas.width, sCanvas.height);
-            
-            // วาดเฉพาะสี่เหลี่ยมจุดเสี่ยง (รูปภาพจะแสดงอยู่ด้านหลังผ่านแท็ก <img> แทน)
             studentHazards.forEach(h => {
                 if(h.isFound) {
                     const px = h.boundingBox.x * sCanvas.width, py = h.boundingBox.y * sCanvas.height;
@@ -512,7 +659,24 @@
             });
         }
 
-        // --- Helper ---
+        // --- Summary View ---
+        function showSummary() {
+            const timeDiff = Math.floor((Date.now() - gameStartTime) / 1000); // วินาที
+            const m = Math.floor(timeDiff / 60).toString().padStart(2, '0');
+            const s = (timeDiff % 60).toString().padStart(2, '0');
+            
+            document.getElementById('summaryTime').innerText = `${m}:${s}`;
+            document.getElementById('summaryScore').innerText = globalScore;
+            
+            document.getElementById('summaryModal').classList.remove('hidden-section');
+        }
+
+        function finishGame() {
+            document.getElementById('summaryModal').classList.add('hidden-section');
+            showView('home-view');
+        }
+
+        // --- Basic Modals ---
         function showModal(title, desc, type) {
             const m = document.getElementById('messageModal');
             document.getElementById('msgModalTitle').innerText = title;
