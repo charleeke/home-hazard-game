@@ -204,7 +204,7 @@
         
         function logout() { if(confirm('ออกจากระบบ?')) showView('home-view'); }
 
-        // --- Network Helper (เพื่อแก้ปัญหาเชื่อมต่อ) ---
+        // --- Network Helper ---
         async function fetchFromGoogle(options = {}) {
             if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("วาง_URL")) {
                 throw new Error("ยังไม่ได้ตั้งค่า GOOGLE_API_URL ในโค้ด HTML");
@@ -428,7 +428,8 @@
 
                 // Load Image
                 sImg = new Image();
-                sImg.crossOrigin = "Anonymous";
+                // นำ crossOrigin = "Anonymous" ออก เพื่อป้องกันการถูกบล็อกจากนโยบาย CORS ของ Google Drive
+                // sImg.crossOrigin = "Anonymous";
                 
                 // ถ้ารูปโหลดสำเร็จ
                 sImg.onload = () => {
