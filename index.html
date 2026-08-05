@@ -25,13 +25,13 @@
         
         /* Modal Styles */
         .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: flex; justify-content: center; align-items: center; z-index: 50; }
-        .modal-content { background: white; padding: 2rem; border-radius: 1rem; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-content { background: white; padding: 2rem; border-radius: 1rem; width: 90%; max-width: 450px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
         
         /* Canvas Styles */
         canvas { cursor: crosshair; display: block; max-width: 100%; margin: 0 auto;}
         #teacherCanvas { border: 2px dashed #cbd5e1; background: #fff; }
         
-        /* Shake Animation for Wrong Clicks */
+        /* Shake Animation */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             20%, 60% { transform: translateX(-10px); }
@@ -49,7 +49,7 @@
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycby1fv9JRaEEa3Lb58YJfZ6hkrC40Q6jfg9L9RJmEAQ2MyF6NAQUyMMlPmRJm88EO_YTGA/exec";
     </script>
 
-    <!-- Audio Elements for Feedback -->
+    <!-- Audio Effects -->
     <audio id="sndCorrect" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" preload="auto"></audio>
     <audio id="sndWrong" src="https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3" preload="auto"></audio>
 
@@ -89,7 +89,7 @@
                 <button onclick="showView('login-view')" class="bg-white border-2 border-slate-200 hover:border-primary p-8 rounded-2xl shadow-sm hover:shadow-md transition-all group text-left flex flex-col h-full">
                     <i class="fa-solid fa-chalkboard-user text-5xl text-primary mb-4 group-hover:scale-110 transition-transform pointer-events-none"></i>
                     <h3 class="text-2xl font-bold mb-2 pointer-events-none">Teacher Mode</h3>
-                    <p class="text-slate-500 flex-grow pointer-events-none">สร้างจุดเสี่ยง อัปโหลดรูปภาพ จัดการคลังข้อสอบผ่าน Dashboard</p>
+                    <p class="text-slate-500 flex-grow pointer-events-none">จัดการข้อสอบ ปรับแก้รูปภาพ และตำแหน่งจุดเสี่ยง</p>
                     <div class="mt-4 text-primary font-bold pointer-events-none">จัดการระบบ <i class="fa-solid fa-lock"></i></div>
                 </button>
             </div>
@@ -116,9 +116,8 @@
 
             <!-- Dashboard Settings & List -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                <div class="flex justify-between items-center border-b pb-4 mb-4">
+                <div class="flex flex-col md:flex-row justify-between items-center border-b pb-4 mb-4 gap-4">
                     <h3 class="text-xl font-bold"><i class="fa-solid fa-server text-secondary"></i> คลังแบบทดสอบในระบบ</h3>
-                    <!-- สวิตช์ตั้งค่าการสุ่ม -->
                     <div class="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-lg">
                         <input type="checkbox" id="randomizeToggle" onchange="toggleRandomize(this.checked)" class="w-5 h-5 cursor-pointer accent-primary">
                         <label for="randomizeToggle" class="font-bold text-sm cursor-pointer">สุ่มภาพข้อสอบในแต่ละห้อง</label>
@@ -132,11 +131,14 @@
             </div>
 
             <!-- Authoring -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 class="text-xl font-bold mb-4 border-b pb-2">1. สร้างข้อสอบใหม่</h3>
+            <div id="authoringArea" class="grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-300">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative">
+                    <!-- Badge Edit Mode -->
+                    <div id="editModeBadge" class="hidden-section absolute -top-3 -right-3 bg-warning text-white px-3 py-1 rounded-full text-xs font-bold shadow-md animate-pulse">กำลังแก้ไขข้อสอบเดิม</div>
                     
-                    <label class="block mb-2 font-bold text-sm">อัปโหลดรูปภาพห้อง</label>
+                    <h3 class="text-xl font-bold mb-4 border-b pb-2" id="authorTitle">1. สร้างข้อสอบใหม่</h3>
+                    
+                    <label class="block mb-2 font-bold text-sm">อัปโหลดรูปภาพห้อง (ถ้าต้องการเปลี่ยน)</label>
                     <input type="file" id="imageUpload" accept="image/*" class="w-full p-2 border rounded mb-4 text-sm bg-slate-50">
                     
                     <label class="block mb-2 font-bold text-sm">หมวดหมู่ 7 ห้อง</label>
@@ -150,16 +152,20 @@
                         <option value="บริเวณรอบบ้าน">7. บริเวณรอบบ้าน</option>
                     </select>
 
-                    <label class="block mb-2 font-bold text-sm">เพิ่มคำอธิบายความเสี่ยง</label>
+                    <label class="block mb-2 font-bold text-sm">อธิบายจุดเสี่ยง (พิมพ์แล้วไปวาดกรอบ)</label>
                     <input type="text" id="hazardType" placeholder="เช่น สายไฟขวางทางเดิน" class="w-full p-2 border rounded mb-2">
                     <input type="text" id="hazardAdvice" placeholder="คำแนะนำทางกายภาพบำบัด" class="w-full p-2 border rounded mb-4">
                     
                     <button onclick="addHazardMode()" id="drawBtn" class="w-full bg-slate-200 text-slate-700 py-2 rounded font-bold hover:bg-slate-300 mb-4 transition-colors">
-                        <i class="fa-solid fa-pen-to-square"></i> เริ่มวาดกรอบบนภาพ
+                        <i class="fa-solid fa-pen-to-square"></i> เริ่มวาดกรอบ / บันทึกจุดนี้
                     </button>
 
-                    <button onclick="saveDatasetToServer(event)" id="saveBtn" class="w-full bg-primary text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-transform hover:scale-105">
+                    <button onclick="saveDatasetToServer(event)" id="saveBtn" class="w-full bg-primary text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-transform">
                         <i class="fa-solid fa-cloud-arrow-up"></i> บันทึกข้อสอบลงระบบ
+                    </button>
+                    
+                    <button onclick="cancelEditMode()" id="cancelEditBtn" class="hidden-section w-full bg-slate-200 text-slate-600 py-2 mt-2 rounded-xl font-bold hover:bg-slate-300">
+                        ยกเลิกการแก้ไข
                     </button>
                 </div>
 
@@ -180,20 +186,23 @@
         <!-- VIEW 4: Student Game -->
         <div id="student-view" class="hidden-section w-full max-w-4xl fade-in">
             
-            <!-- Navigation for 7 Rooms -->
-            <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4 border border-slate-200">
+            <div class="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4 border border-slate-200 gap-4">
                 <button id="prevRoomBtn" onclick="navigateRoom(-1)" class="px-4 py-2 bg-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-arrow-left"></i> ก่อนหน้า
+                    <i class="fa-solid fa-arrow-left"></i> ย้อนกลับ
                 </button>
                 
-                <h3 id="roomProgressText" class="text-xl font-bold text-primary text-center flex-grow">ห้องที่ 1/7: ห้องนั่งเล่น</h3>
+                <h3 id="roomProgressText" class="text-xl font-bold text-primary text-center flex-grow">ห้องที่ 1/7</h3>
                 
-                <button id="nextRoomBtn" onclick="navigateRoom(1)" class="px-4 py-2 bg-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-300 transition-colors">
-                    ข้าม / ถัดไป <i class="fa-solid fa-arrow-right"></i>
-                </button>
+                <div class="flex gap-2">
+                    <button id="revealBtn" onclick="revealAnswers()" class="px-4 py-2 bg-warning text-white rounded-lg font-bold shadow-md hover:bg-yellow-600 transition-colors">
+                        <i class="fa-solid fa-eye"></i> ดูเฉลย
+                    </button>
+                    <button id="nextRoomBtn" onclick="navigateRoom(1)" class="px-4 py-2 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-blue-700 transition-colors">
+                        ถัดไป <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- Score Display -->
             <div class="flex justify-between items-end mb-4 px-2">
                 <h2 class="text-lg font-bold text-secondary"><i class="fa-solid fa-search"></i> ค้นหาจุดเสี่ยงให้ครบ</h2>
                 <div class="flex gap-4">
@@ -203,14 +212,13 @@
             </div>
             
             <div id="canvasWrapper" class="bg-white p-2 rounded-2xl shadow-xl border border-slate-200">
-                <!-- เทคนิค Overlay -->
                 <div class="relative w-full leading-none rounded-xl overflow-hidden bg-slate-100 min-h-[400px] flex items-center justify-center">
                     <h3 id="noDataText" class="absolute text-slate-400 font-bold text-xl hidden-section">ไม่มีข้อมูลข้อสอบสำหรับห้องนี้</h3>
                     <img id="studentImgBase" class="w-full h-auto block" alt="Room Image">
                     <canvas id="studentCanvas" class="absolute top-0 left-0 w-full h-full cursor-crosshair"></canvas>
                 </div>
             </div>
-            <p class="text-center text-slate-500 mt-4 animate-pulse">👆 คลิกบริเวณที่คิดว่าเป็นความเสี่ยง (คลิกถูก +10 | ผิด -5)</p>
+            <p id="studentHint" class="text-center text-slate-500 mt-4 animate-pulse">👆 คลิกบริเวณที่คิดว่าเป็นความเสี่ยง (คลิกถูก +10 | ผิด -5)</p>
         </div>
 
     </main>
@@ -220,14 +228,14 @@
         <div class="modal-content">
             <i id="msgModalIcon" class="fa-solid fa-circle-info text-5xl text-primary mb-4"></i>
             <h3 id="msgModalTitle" class="text-xl font-bold mb-2"></h3>
-            <p id="msgModalDesc" class="text-slate-500 mb-6 text-sm"></p>
+            <p id="msgModalDesc" class="text-slate-500 mb-6 text-base leading-relaxed"></p>
             <button onclick="hideModal('messageModal')" class="w-full bg-primary text-white font-bold py-3 rounded-xl">ตกลง</button>
         </div>
     </div>
 
     <!-- Final Summary Modal -->
     <div id="summaryModal" class="modal-overlay hidden-section">
-        <div class="modal-content !max-w-md">
+        <div class="modal-content">
             <i class="fa-solid fa-trophy text-7xl text-warning mb-6"></i>
             <h2 class="text-3xl font-bold text-primary mb-2">สรุปผลการประเมิน</h2>
             <p class="text-slate-500 mb-6">คุณทำการประเมินครบทั้ง 7 บริเวณแล้ว!</p>
@@ -239,7 +247,7 @@
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-lg font-bold text-slate-600"><i class="fa-solid fa-star text-warning"></i> คะแนนรวม</span>
-                    <span id="summaryScore" class="text-3xl font-bold text-secondary">0</span>
+                    <span id="summaryScore" class="text-4xl font-bold text-secondary">0</span>
                 </div>
             </div>
             <button onclick="finishGame()" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-transform hover:scale-105">กลับหน้าหลัก</button>
@@ -247,47 +255,34 @@
     </div>
 
     <script>
-        // --- Core Constants & State Management ---
+        // --- Core Application State ---
         const ROOM_SEQUENCE = ["ห้องนั่งเล่น", "ห้องครัว", "ห้องน้ำ", "ห้องนอน", "บันได", "โรงรถ", "บริเวณรอบบ้าน"];
         
-        let appData = { roomType: "ห้องนั่งเล่น", imageBase64: "", mimeType: "", fileName: "", hazards: [] };
+        let allRoomsData = []; // เก็บ Data ทั้งหมดที่ดึงมาในฝั่งครู
+        let appData = { id: "", roomType: "ห้องนั่งเล่น", imageBase64: "", imageUrl: "", mimeType: "", fileName: "", hazards: [] };
         let studentHazards = [];
         
         // Game State
-        let gameSequenceData = []; // เก็บข้อสอบทั้ง 7 ห้อง
+        let gameSequenceData = []; 
         let currentRoomIndex = 0;
         let globalScore = 0; 
         let hazardsFound = 0;
         let gameStartTime = 0;
+        let isAnswersRevealed = false;
 
-        // Load Randomize Setting
         let isRandomize = localStorage.getItem('pt_randomize') === 'true';
         document.getElementById('randomizeToggle').checked = isRandomize;
-
-        function toggleRandomize(checked) {
-            isRandomize = checked;
-            localStorage.setItem('pt_randomize', checked);
-        }
-
-        // --- Audio Functions ---
-        const sndCorrect = document.getElementById('sndCorrect');
-        const sndWrong = document.getElementById('sndWrong');
+        function toggleRandomize(checked) { isRandomize = checked; localStorage.setItem('pt_randomize', checked); }
 
         function playSound(type) {
             try {
-                if(type === 'correct') {
-                    sndCorrect.currentTime = 0; sndCorrect.play();
-                } else {
-                    sndWrong.currentTime = 0; sndWrong.play();
-                }
-            } catch(e) { console.log("Audio play prevented by browser"); }
+                const s = type === 'correct' ? document.getElementById('sndCorrect') : document.getElementById('sndWrong');
+                s.currentTime = 0; s.play();
+            } catch(e) {}
         }
 
-        // --- View Routing ---
         function showView(viewId) {
-            ['home-view', 'login-view', 'teacher-view', 'student-view'].forEach(id => {
-                document.getElementById(id).classList.add('hidden-section');
-            });
+            ['home-view', 'login-view', 'teacher-view', 'student-view'].forEach(id => document.getElementById(id).classList.add('hidden-section'));
             document.getElementById(viewId).classList.remove('hidden-section');
             document.getElementById('logoutBtn').classList.toggle('hidden-section', viewId !== 'teacher-view');
         }
@@ -298,18 +293,12 @@
                 document.getElementById('teacherPassword').value = "";
                 showView('teacher-view');
                 loadTeacherDashboard();
-            } else {
-                document.getElementById('loginError').classList.remove('hidden-section');
-            }
+            } else { document.getElementById('loginError').classList.remove('hidden-section'); }
         }
-        
-        function logout() { if(confirm('ออกจากระบบ?')) showView('home-view'); }
+        function logout() { if(confirm('ออกจากระบบจัดการ?')) { cancelEditMode(); showView('home-view'); } }
 
-        // --- Network Helper ---
         async function fetchFromGoogle(options = {}) {
-            if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("วาง_URL")) {
-                throw new Error("ยังไม่ได้ตั้งค่า GOOGLE_API_URL ในโค้ด HTML");
-            }
+            if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("วาง_URL")) throw new Error("ยังไม่ได้ใส่ GOOGLE_API_URL ในโค้ด");
             try {
                 const response = await fetch(GOOGLE_API_URL, {
                     method: options.method || "GET",
@@ -317,17 +306,17 @@
                     body: options.body ? JSON.stringify(options.body) : undefined
                 });
                 const text = await response.text();
-                try { return JSON.parse(text); } catch(e) { throw new Error("ข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง: " + text.substring(0, 50)); }
-            } catch (err) { throw new Error("ล้มเหลวในการเชื่อมต่อ: " + err.message); }
+                try { return JSON.parse(text); } catch(e) { throw new Error("ข้อมูลตอบกลับผิดพลาด: " + text.substring(0, 50)); }
+            } catch (err) { throw new Error("การเชื่อมต่อล้มเหลว: " + err.message); }
         }
 
-
-        // --- Teacher Authoring ---
+        // --- Teacher Authoring & Editing ---
         const tCanvas = document.getElementById('teacherCanvas');
         const tCtx = tCanvas.getContext('2d');
         let tImg = new Image();
         let isDrawing = false; let allowDrawing = false;
         let startX, startY, currentX, currentY, tempBox = null;
+        let editingHazardId = null; // ID ของจุดเสี่ยงที่กำลังถูกแก้ไข
 
         document.getElementById('imageUpload').addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -335,10 +324,8 @@
             const reader = new FileReader();
             reader.onload = (event) => {
                 appData.imageBase64 = event.target.result;
-                appData.mimeType = file.type;
-                appData.fileName = file.name;
-                appData.hazards = [];
-                
+                appData.mimeType = file.type; appData.fileName = file.name;
+                tImg.crossOrigin = "Anonymous";
                 tImg.onload = () => {
                     tCanvas.width = tImg.width; tCanvas.height = tImg.height;
                     document.getElementById('canvasPlaceholder').classList.add('hidden-section');
@@ -350,9 +337,9 @@
         });
 
         function addHazardMode() {
-            if(!tImg.src) { showModal("แจ้งเตือน", "กรุณาอัปโหลดรูปก่อน", "error"); return; }
+            if(!tImg.src) { showModal("แจ้งเตือน", "กรุณาอัปโหลดรูปภาพ หรือโหลดข้อสอบเดิมก่อน", "error"); return; }
             allowDrawing = true;
-            document.getElementById('drawStatus').innerText = "🔴 กำลังวาดกรอบ (คลิกและลากเมาส์)";
+            document.getElementById('drawStatus').innerText = "🔴 กำลังวาดกรอบ (วาดทับเพื่อเปลี่ยนตำแหน่ง)";
             document.getElementById('drawStatus').className = "text-sm font-bold text-red-500 animate-pulse";
         }
 
@@ -379,17 +366,53 @@
             document.getElementById('drawStatus').innerText = "โหมดดูภาพ";
             document.getElementById('drawStatus').className = "text-sm font-bold text-slate-400";
             
-            if(tempBox && tempBox.w > 20 && tempBox.h > 20) {
-                appData.hazards.push({
-                    id: Date.now().toString(),
+            // ถ้าวาดเสร็จ (หรือถ้ากำลังแก้แล้วไม่ได้วาดใหม่ ให้ใช้กรอบเดิม)
+            if(tempBox && tempBox.w > 10 && tempBox.h > 10) {
+                const newHaz = {
+                    id: editingHazardId || Date.now().toString(),
                     riskType: document.getElementById('hazardType').value || "จุดเสี่ยงทั่วไป",
-                    advice: document.getElementById('hazardAdvice').value || "โปรดระมัดระวังเป็นพิเศษ",
+                    advice: document.getElementById('hazardAdvice').value || "โปรดระมัดระวัง",
+                    boundingBox: { x: tempBox.x/tCanvas.width, y: tempBox.y/tCanvas.height, width: tempBox.w/tCanvas.width, height: tempBox.h/tCanvas.height }
+                };
+                appData.hazards.push(newHaz);
+            } else if (editingHazardId && tempBox) {
+                // เซฟโดยใช้กรอบเดิม (กรณีแก้แค่ข้อความ ไม่ได้วาดกรอบใหม่)
+                 appData.hazards.push({
+                    id: editingHazardId,
+                    riskType: document.getElementById('hazardType').value || "จุดเสี่ยงทั่วไป",
+                    advice: document.getElementById('hazardAdvice').value || "โปรดระมัดระวัง",
                     boundingBox: { x: tempBox.x/tCanvas.width, y: tempBox.y/tCanvas.height, width: tempBox.w/tCanvas.width, height: tempBox.h/tCanvas.height }
                 });
-                document.getElementById('hazardType').value = ""; document.getElementById('hazardAdvice').value = "";
             }
-            tempBox = null; renderTeacher();
+            
+            document.getElementById('hazardType').value = ""; document.getElementById('hazardAdvice').value = "";
+            document.getElementById('drawBtn').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> เริ่มวาดกรอบ / เพิ่มจุดใหม่';
+            tempBox = null; editingHazardId = null;
+            renderTeacher();
         });
+
+        // 🌟 ระบบแก้ไขจุดเสี่ยง (Edit Hazard)
+        function editHazard(id) {
+            const index = appData.hazards.findIndex(h => h.id === id);
+            if(index === -1) return;
+            
+            const h = appData.hazards[index];
+            document.getElementById('hazardType').value = h.riskType;
+            document.getElementById('hazardAdvice').value = h.advice;
+            
+            editingHazardId = h.id;
+            // เอากรอบเดิมมาใส่ใน tempBox เพื่อให้โชว์ในจอ
+            tempBox = {
+                x: h.boundingBox.x * tCanvas.width, y: h.boundingBox.y * tCanvas.height,
+                w: h.boundingBox.width * tCanvas.width, h: h.boundingBox.height * tCanvas.height
+            };
+            
+            // ลบอันเก่าออกชั่วคราว รอเซฟทับ
+            appData.hazards.splice(index, 1);
+            
+            document.getElementById('drawBtn').innerHTML = '<i class="fa-solid fa-check"></i> บันทึกการแก้ไข (หรือวาดกรอบใหม่ทับ)';
+            renderTeacher();
+        }
 
         function removeHazard(id) { appData.hazards = appData.hazards.filter(h => h.id !== id); renderTeacher(); }
 
@@ -400,18 +423,25 @@
             appData.hazards.forEach(h => {
                 const px = h.boundingBox.x * tCanvas.width, py = h.boundingBox.y * tCanvas.height;
                 const pw = h.boundingBox.width * tCanvas.width, ph = h.boundingBox.height * tCanvas.height;
-                tCtx.strokeStyle = '#10B981'; tCtx.lineWidth = 6; tCtx.strokeRect(px, py, pw, ph);
+                tCtx.strokeStyle = '#10B981'; tCtx.lineWidth = 4; tCtx.strokeRect(px, py, pw, ph);
             });
+            
             if(tempBox) {
-                tCtx.strokeStyle = '#EF4444'; tCtx.lineWidth = 4; tCtx.setLineDash([8,8]);
+                tCtx.strokeStyle = '#EF4444'; tCtx.lineWidth = 4; tCtx.setLineDash([6,6]);
                 tCtx.strokeRect(tempBox.x, tempBox.y, tempBox.w, tempBox.h); tCtx.setLineDash([]);
+                tCtx.fillStyle = 'rgba(239, 68, 68, 0.2)'; tCtx.fillRect(tempBox.x, tempBox.y, tempBox.w, tempBox.h);
             }
 
             const listDiv = document.getElementById('hazardList');
             listDiv.innerHTML = '';
             appData.hazards.forEach((h, i) => {
-                listDiv.innerHTML += `<div class="bg-blue-50 text-blue-800 text-sm px-3 py-1 rounded-full border border-blue-200 flex items-center mb-2">
-                    ${i+1}. ${h.riskType} <button onclick="removeHazard('${h.id}')" class="ml-2 text-red-500 hover:text-red-700"><i class="fa-solid fa-xmark"></i></button>
+                listDiv.innerHTML += `
+                <div class="bg-blue-50 text-blue-800 text-sm px-4 py-2 rounded-lg border border-blue-200 flex items-center mb-2 w-full justify-between shadow-sm">
+                    <div class="truncate"><strong>${i+1}. ${h.riskType}</strong> <span class="text-xs text-slate-500 block truncate">${h.advice}</span></div>
+                    <div class="flex gap-2 ml-2">
+                        <button onclick="editHazard('${h.id}')" class="text-warning hover:text-yellow-600 px-2 py-1 bg-white rounded shadow-sm"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="removeHazard('${h.id}')" class="text-danger hover:text-red-700 px-2 py-1 bg-white rounded shadow-sm"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 </div>`;
             });
         }
@@ -423,43 +453,104 @@
             listDiv.innerHTML = '';
             
             try {
-                const rooms = await fetchFromGoogle();
+                allRoomsData = await fetchFromGoogle();
                 document.getElementById('dashboardLoading').classList.add('hidden-section');
 
-                if(!Array.isArray(rooms) || rooms.length === 0) { 
-                    listDiv.innerHTML = '<p class="text-sm text-slate-400 italic">ยังไม่มีข้อสอบในระบบ</p>'; 
-                    return; 
+                if(!Array.isArray(allRoomsData) || allRoomsData.length === 0) { 
+                    listDiv.innerHTML = '<p class="text-sm text-slate-400 italic col-span-full">ยังไม่มีข้อสอบในระบบ</p>'; return; 
                 }
                 
-                rooms.forEach((room, i) => {
+                allRoomsData.forEach((room, i) => {
+                    let directUrl = room.imageUrl;
+                    if(directUrl.includes('drive.google.com/uc?id=')) {
+                        directUrl = `https://lh3.googleusercontent.com/d/${directUrl.split('id=')[1].split('&')[0]}`;
+                    }
+
                     listDiv.innerHTML += `
-                        <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <img src="${room.imageUrl}" class="w-16 h-16 object-cover rounded bg-slate-200" onerror="this.src='https://placehold.co/64?text=No+Image'">
+                        <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <img src="${directUrl}" class="w-16 h-16 object-cover rounded-lg bg-slate-200" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'">
                             <div class="flex-grow overflow-hidden">
-                                <h4 class="font-bold text-sm truncate text-primary">${room.roomType || 'ไม่มีหมวดหมู่'}</h4>
-                                <p class="text-xs text-slate-500">จุดเสี่ยง: ${room.hazards ? room.hazards.length : 0} จุด</p>
+                                <h4 class="font-bold text-sm text-primary truncate">${room.roomType}</h4>
+                                <p class="text-xs text-slate-500">มี ${room.hazards ? room.hazards.length : 0} จุดเสี่ยง</p>
                             </div>
-                            <button onclick="deleteRoom('${room.id}')" class="bg-red-100 text-red-600 p-2 rounded-lg hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>
+                            <div class="flex flex-col gap-1">
+                                <button onclick="editRoomMode('${room.id}')" class="bg-blue-100 text-blue-600 px-2 py-1 text-xs rounded hover:bg-blue-200 font-bold"><i class="fa-solid fa-pen"></i> แก้ไข</button>
+                                <button onclick="deleteRoom('${room.id}')" class="bg-red-100 text-red-600 px-2 py-1 text-xs rounded hover:bg-red-200 font-bold"><i class="fa-solid fa-trash"></i> ลบ</button>
+                            </div>
                         </div>`;
                 });
             } catch(e) {
                 document.getElementById('dashboardLoading').classList.add('hidden-section');
-                listDiv.innerHTML = `<p class="text-sm text-red-500"><i class="fa-solid fa-circle-exclamation"></i> ${e.message}</p>`;
+                listDiv.innerHTML = `<p class="text-sm text-red-500 col-span-full"><i class="fa-solid fa-circle-exclamation"></i> ${e.message}</p>`;
             }
         }
 
-        async function saveDatasetToServer(event) {
-            if(appData.hazards.length === 0 || !appData.imageBase64) {
-                showModal("ข้อมูลไม่ครบ", "กรุณาอัปโหลดรูปและวาดความเสี่ยงอย่างน้อย 1 จุด", "error"); return;
+        // 🌟 โหลดข้อสอบเดิมมาเพื่อแก้ไข (Edit Room)
+        function editRoomMode(id) {
+            const room = allRoomsData.find(r => r.id === id);
+            if(!room) return;
+            
+            // Setup Editor State
+            appData = {
+                id: room.id,
+                roomType: room.roomType,
+                imageUrl: room.imageUrl,
+                imageBase64: "", mimeType: "", fileName: "",
+                hazards: JSON.parse(JSON.stringify(room.hazards)) // clone array
+            };
+
+            document.getElementById('roomCategory').value = room.roomType;
+            document.getElementById('authorTitle').innerText = "กำลังแก้ไขข้อสอบ";
+            document.getElementById('saveBtn').innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> อัปเดตข้อมูลข้อสอบ';
+            document.getElementById('saveBtn').className = "w-full bg-warning text-white py-3 rounded-xl font-bold shadow-lg hover:bg-yellow-600 transition-transform";
+            document.getElementById('editModeBadge').classList.remove('hidden-section');
+            document.getElementById('cancelEditBtn').classList.remove('hidden-section');
+
+            // Load Image to Canvas
+            let directUrl = room.imageUrl;
+            if(directUrl.includes('drive.google.com/uc?id=')) {
+                directUrl = `https://lh3.googleusercontent.com/d/${directUrl.split('id=')[1].split('&')[0]}`;
             }
+            
+            tImg = new Image();
+            tImg.crossOrigin = "Anonymous";
+            tImg.onload = () => {
+                tCanvas.width = tImg.width; tCanvas.height = tImg.height;
+                document.getElementById('canvasPlaceholder').classList.add('hidden-section');
+                renderTeacher();
+            };
+            tImg.src = directUrl;
+
+            // Scroll to editor
+            document.getElementById('authoringArea').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEditMode() {
+            appData = { id: "", roomType: "ห้องนั่งเล่น", imageBase64: "", imageUrl: "", mimeType: "", fileName: "", hazards: [] };
+            document.getElementById('authorTitle').innerText = "1. สร้างข้อสอบใหม่";
+            document.getElementById('saveBtn').innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> บันทึกข้อสอบลงระบบ';
+            document.getElementById('saveBtn').className = "w-full bg-primary text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-transform";
+            document.getElementById('editModeBadge').classList.add('hidden-section');
+            document.getElementById('cancelEditBtn').classList.add('hidden-section');
+            document.getElementById('imageUpload').value = "";
+            tImg = new Image(); renderTeacher();
+            document.getElementById('canvasPlaceholder').classList.remove('hidden-section');
+        }
+
+        async function saveDatasetToServer(event) {
+            if(appData.hazards.length === 0) { showModal("ข้อมูลไม่ครบ", "กรุณาวาดจุดเสี่ยงอย่างน้อย 1 จุด", "error"); return; }
+            if(!appData.id && !appData.imageBase64) { showModal("ข้อมูลไม่ครบ", "กรุณาอัปโหลดรูปภาพใหม่", "error"); return; }
 
             const btn = document.getElementById('saveBtn');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังอัปโหลด (อาจใช้เวลา 1-2 นาที)...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังอัปโหลดข้อมูล...';
             btn.disabled = true;
 
             const payload = {
-                action: "save", roomType: document.getElementById('roomCategory').value,
+                action: appData.id ? "update" : "save", 
+                id: appData.id,
+                roomType: document.getElementById('roomCategory').value,
+                imageUrl: appData.imageUrl, // ส่ง URL เดิมไปด้วย เผื่อไม่ได้อัปรูปใหม่
                 imageBase64: appData.imageBase64, mimeType: appData.mimeType, fileName: appData.fileName,
                 hazards: appData.hazards
             };
@@ -468,21 +559,16 @@
                 const result = await fetchFromGoogle({ method: "POST", body: payload });
                 if (result.error) throw new Error(result.error);
                 
-                appData = { roomType: "", imageBase64: "", mimeType: "", fileName: "", hazards: [] };
-                tImg = new Image(); renderTeacher();
-                document.getElementById('canvasPlaceholder').classList.remove('hidden-section');
-                
-                showModal("สำเร็จ!", "ข้อสอบถูกบันทึกลงระบบพร้อมใช้งาน", "success");
+                showModal("สำเร็จ!", appData.id ? "แก้ไขข้อสอบเรียบร้อยแล้ว" : "ข้อสอบถูกบันทึกลงระบบพร้อมใช้งาน", "success");
+                cancelEditMode(); // รีเซ็ตฟอร์ม
                 loadTeacherDashboard();
-            } catch(e) {
-                showModal("บันทึกไม่สำเร็จ", e.message, "error");
-            } finally {
-                btn.innerHTML = originalText; btn.disabled = false;
-            }
+            } catch(e) { showModal("บันทึกไม่สำเร็จ", e.message, "error"); } 
+            finally { btn.innerHTML = originalText; btn.disabled = false; }
         }
 
         async function deleteRoom(id) {
             if(!confirm("ต้องการลบข้อสอบนี้ใช่หรือไม่?")) return;
+            if(appData.id === id) cancelEditMode(); // ถ้ายกเลิกตัวที่กำลังแก้อยู่
             try {
                 await fetchFromGoogle({ method: "POST", body: { action: "delete", id: id } });
                 loadTeacherDashboard();
@@ -490,7 +576,7 @@
         }
 
 
-        // --- Student Game Mode (Sequential 7 Rooms) ---
+        // --- Student Game Mode ---
         const sCanvas = document.getElementById('studentCanvas');
         const sCtx = sCanvas.getContext('2d');
         const sImgBase = document.getElementById('studentImgBase'); 
@@ -500,37 +586,24 @@
             const btnContent = document.getElementById('studentBtnContent');
             const originalHTML = btnContent.innerHTML;
             
-            btnContent.innerHTML = `<div class="flex flex-col items-center justify-center h-full">
-                <i class="fa-solid fa-spinner fa-spin text-5xl text-secondary mb-4"></i>
-                <h3 class="text-2xl font-bold">กำลังเตรียมห้องทั้ง 7...</h3>
-            </div>`;
+            btnContent.innerHTML = `<div class="flex flex-col items-center justify-center h-full"><i class="fa-solid fa-spinner fa-spin text-5xl text-secondary mb-4"></i><h3 class="text-2xl font-bold">กำลังเตรียมข้อมูล...</h3></div>`;
             
             try {
                 const allData = await fetchFromGoogle();
-                if(!Array.isArray(allData) || allData.length === 0) throw new Error("ยังไม่มีข้อสอบในระบบ");
+                if(!Array.isArray(allData) || allData.length === 0) throw new Error("คุณครูยังไม่ได้สร้างข้อสอบในระบบ");
 
-                // จัดคิว 7 ห้อง
                 gameSequenceData = ROOM_SEQUENCE.map(roomName => {
                     const matches = allData.filter(r => r.roomType === roomName);
-                    if (matches.length === 0) return null; // ไม่มีข้อสอบหมวดนี้
-                    
-                    if (isRandomize) {
-                        return matches[Math.floor(Math.random() * matches.length)]; // สุ่มจากที่มี
-                    }
-                    return matches[0]; // ไม่สุ่ม เอาอันแรกที่เจอ
+                    if (matches.length === 0) return null;
+                    return isRandomize ? matches[Math.floor(Math.random() * matches.length)] : matches[0];
                 });
 
-                // Reset Game States
-                globalScore = 0; 
-                gameStartTime = Date.now();
-                
+                globalScore = 0; gameStartTime = Date.now();
                 showView('student-view');
-                btnContent.innerHTML = originalHTML; // คืนค่าปุ่ม
-                
-                loadStudentRoom(0); // เริ่มห้องที่ 1
-
+                btnContent.innerHTML = originalHTML;
+                loadStudentRoom(0);
             } catch (error) {
-                document.getElementById('homeWarning').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> เข้าสู่ระบบไม่สำเร็จ: ${error.message}`;
+                document.getElementById('homeWarning').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ข้อผิดพลาด: ${error.message}`;
                 document.getElementById('homeWarning').classList.remove('hidden-section');
                 btnContent.innerHTML = originalHTML; 
             }
@@ -538,87 +611,79 @@
 
         function loadStudentRoom(index) {
             currentRoomIndex = index;
+            isAnswersRevealed = false;
             const roomData = gameSequenceData[index];
             const isLastRoom = (index === ROOM_SEQUENCE.length - 1);
             
-            // อัปเดต UI แถบนำทาง
             document.getElementById('roomProgressText').innerText = `ห้องที่ ${index + 1}/7: ${ROOM_SEQUENCE[index]}`;
             document.getElementById('prevRoomBtn').disabled = (index === 0);
+            document.getElementById('revealBtn').disabled = false;
             
             const nextBtn = document.getElementById('nextRoomBtn');
             if (isLastRoom) {
                 nextBtn.innerHTML = 'สรุปผล <i class="fa-solid fa-flag-checkered"></i>';
-                nextBtn.className = "px-6 py-2 bg-warning text-white rounded-lg font-bold shadow-md hover:bg-yellow-600 transition-colors";
+                nextBtn.className = "px-6 py-2 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-blue-700 transition-colors";
             } else {
-                nextBtn.innerHTML = 'ข้าม / ถัดไป <i class="fa-solid fa-arrow-right"></i>';
+                nextBtn.innerHTML = 'ถัดไป <i class="fa-solid fa-arrow-right"></i>';
                 nextBtn.className = "px-4 py-2 bg-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-300 transition-colors";
             }
 
-            // รีเซ็ตการแสดงผล
             sCtx.clearRect(0,0, sCanvas.width, sCanvas.height);
             document.getElementById('noDataText').classList.add('hidden-section');
+            document.getElementById('studentHint').innerText = "👆 คลิกบริเวณที่คิดว่าเป็นความเสี่ยง (คลิกถูก +10 | ผิด -5)";
 
             if (!roomData) {
-                // กรณีห้องนั้นไม่มีข้อสอบในระบบ
-                sImgBase.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // transparent
+                sImgBase.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; 
+                document.getElementById('noDataText').innerText = `ไม่มีข้อมูลสำหรับ ${ROOM_SEQUENCE[index]}`;
                 document.getElementById('noDataText').classList.remove('hidden-section');
-                studentHazards = [];
-                hazardsFound = 0;
-                document.getElementById('studentFound').innerText = 0;
-                document.getElementById('studentTotal').innerText = 0;
-                document.getElementById('globalScoreDisplay').innerText = globalScore;
+                document.getElementById('revealBtn').disabled = true;
+                studentHazards = []; hazardsFound = 0;
+                document.getElementById('studentFound').innerText = 0; document.getElementById('studentTotal').innerText = 0;
                 return;
             }
 
-            // ตั้งค่าจุดเสี่ยงของด่านนี้
             studentHazards = (roomData.hazards || []).map(h => ({...h, isFound: false}));
             hazardsFound = 0;
-            
             document.getElementById('studentFound').innerText = hazardsFound;
             document.getElementById('studentTotal').innerText = studentHazards.length;
             document.getElementById('globalScoreDisplay').innerText = globalScore;
 
-            // โหลดรูปภาพ
-            sImgBase.onload = () => {
-                sCanvas.width = sImgBase.naturalWidth || 800; 
-                sCanvas.height = sImgBase.naturalHeight || 600;
-                renderStudent();
-            };
-            
+            sImgBase.onload = () => { sCanvas.width = sImgBase.naturalWidth || 800; sCanvas.height = sImgBase.naturalHeight || 600; renderStudent(); };
             sImgBase.onerror = () => { 
-                document.getElementById('noDataText').innerText = "ไม่สามารถแสดงรูปภาพได้ (โปรดตรวจสอบสิทธิ์)";
+                document.getElementById('noDataText').innerText = "ไม่สามารถแสดงรูปได้ (โปรดตรวจสอบสิทธิ์ Drive)";
                 document.getElementById('noDataText').classList.remove('hidden-section');
             };
             
             let finalUrl = roomData.imageUrl;
-            if (finalUrl.includes('drive.google.com/uc?id=')) {
-                const fileId = finalUrl.split('id=')[1].split('&')[0];
-                finalUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
-            }
+            if (finalUrl.includes('drive.google.com/uc?id=')) finalUrl = `https://lh3.googleusercontent.com/d/${finalUrl.split('id=')[1].split('&')[0]}`;
             sImgBase.src = finalUrl;
         }
 
-        // --- Navigation ---
         function navigateRoom(direction) {
             let newIndex = currentRoomIndex + direction;
-            if (newIndex >= 0 && newIndex < ROOM_SEQUENCE.length) {
-                loadStudentRoom(newIndex);
-            } else if (newIndex >= ROOM_SEQUENCE.length) {
-                showSummary();
-            }
+            if (newIndex >= 0 && newIndex < ROOM_SEQUENCE.length) { loadStudentRoom(newIndex); } 
+            else if (newIndex >= ROOM_SEQUENCE.length) { showSummary(); }
         }
 
-        // --- Game Interactions ---
+        // 🌟 ระบบดูเฉลย (Reveal Answers)
+        function revealAnswers() {
+            if(studentHazards.length === 0) return;
+            isAnswersRevealed = true;
+            document.getElementById('revealBtn').disabled = true;
+            document.getElementById('studentHint').innerHTML = "🔴 <span class='text-danger font-bold'>แสดงเฉลยแล้ว!</span> จุดสีส้มคือจุดที่คุณยังหาไม่พบ (คลิกดูคำอธิบายได้แต่ไม่ได้คะแนน)";
+            
+            studentHazards.forEach(h => { if(!h.isFound) h.isRevealed = true; }); // Mark remaining as revealed
+            renderStudent();
+        }
+
         sCanvas.addEventListener('click', (e) => {
-            if (studentHazards.length === 0) return; // ไม่มีข้อมูลให้กด
+            if (studentHazards.length === 0) return; 
             
             const rect = sCanvas.getBoundingClientRect();
-            const clickX = (e.clientX - rect.left) / rect.width;
-            const clickY = (e.clientY - rect.top) / rect.height;
+            const clickX = (e.clientX - rect.left) / rect.width, clickY = (e.clientY - rect.top) / rect.height;
 
             let hit = null;
             for(let h of studentHazards) {
-                if(h.isFound) continue;
                 if(clickX >= h.boundingBox.x && clickX <= h.boundingBox.x + h.boundingBox.width &&
                    clickY >= h.boundingBox.y && clickY <= h.boundingBox.y + h.boundingBox.height) {
                     hit = h; break;
@@ -626,48 +691,60 @@
             }
 
             if(hit) {
-                hit.isFound = true; 
-                globalScore += 10; 
-                hazardsFound++;
-                playSound('correct');
-                showModal("ถูกต้อง!", `<strong class="text-secondary">${hit.riskType}</strong><br><br><span class="text-sm text-slate-500">${hit.advice}</span>`, "success");
+                if(!hit.isFound && !hit.isRevealed) {
+                    // หากกดถูกและยังไม่ได้ดูเฉลย
+                    hit.isFound = true; globalScore += 10; hazardsFound++;
+                    playSound('correct');
+                    showModal("ถูกต้อง!", `<strong class="text-secondary text-xl">${hit.riskType}</strong><br><br><span class="text-sm text-slate-500">${hit.advice}</span>`, "success");
+                } else if(hit.isRevealed) {
+                    // หากกดโดนจุดที่ถูก "เฉลย" ไปแล้ว (ไม่บวกคะแนน)
+                    hit.isFound = true; // turn green
+                    playSound('correct');
+                    showModal("เฉลยความเสี่ยง", `<strong class="text-warning text-xl">${hit.riskType}</strong><br><br><span class="text-sm text-slate-500">${hit.advice}</span><br><br><small class="text-danger">*ไม่ได้คะแนนเนื่องจากดูเฉลยไปแล้ว</small>`, "error");
+                }
             } else {
-                globalScore = Math.max(0, globalScore - 5);
-                playSound('wrong');
-                
-                // สั่นหน้าจอ (Shake Effect)
-                const canvasWrapper = document.getElementById('canvasWrapper');
-                canvasWrapper.classList.remove('shake-animation');
-                void canvasWrapper.offsetWidth; // Trigger reflow
-                canvasWrapper.classList.add('shake-animation');
+                if(!isAnswersRevealed) {
+                    // กดผิด และยังไม่ได้เปิดโหมดเฉลย
+                    globalScore = Math.max(0, globalScore - 5);
+                    playSound('wrong');
+                    const cw = document.getElementById('canvasWrapper');
+                    cw.classList.remove('shake-animation'); void cw.offsetWidth; cw.classList.add('shake-animation');
+                }
             }
             
             document.getElementById('globalScoreDisplay').innerText = globalScore;
             document.getElementById('studentFound').innerText = hazardsFound;
             renderStudent();
+            
+            if(hazardsFound === studentHazards.length && studentHazards.length > 0 && !isAnswersRevealed) {
+                setTimeout(() => { showModal("ผ่านด่าน!", `<div class="text-2xl mt-2 text-primary font-bold">ยอดเยี่ยมมาก!</div><br>คุณประเมินความเสี่ยงครบทุกจุดแล้ว`, "success"); }, 400);
+            }
         });
 
         function renderStudent() {
             sCtx.clearRect(0,0, sCanvas.width, sCanvas.height);
             studentHazards.forEach(h => {
+                const px = h.boundingBox.x * sCanvas.width, py = h.boundingBox.y * sCanvas.height;
+                const pw = h.boundingBox.width * sCanvas.width, ph = h.boundingBox.height * sCanvas.height;
+                
                 if(h.isFound) {
-                    const px = h.boundingBox.x * sCanvas.width, py = h.boundingBox.y * sCanvas.height;
-                    const pw = h.boundingBox.width * sCanvas.width, ph = h.boundingBox.height * sCanvas.height;
+                    // เจอแล้ว (สีเขียว)
                     sCtx.strokeStyle = '#10B981'; sCtx.lineWidth = 6; sCtx.strokeRect(px, py, pw, ph);
                     sCtx.fillStyle = 'rgba(16, 185, 129, 0.4)'; sCtx.fillRect(px, py, pw, ph);
+                } else if (h.isRevealed) {
+                    // โดนเฉลย (สีส้มแดง)
+                    sCtx.strokeStyle = '#F59E0B'; sCtx.lineWidth = 6; sCtx.setLineDash([10,10]); sCtx.strokeRect(px, py, pw, ph);
+                    sCtx.fillStyle = 'rgba(245, 158, 11, 0.4)'; sCtx.fillRect(px, py, pw, ph);
+                    sCtx.setLineDash([]);
                 }
             });
         }
 
         // --- Summary View ---
         function showSummary() {
-            const timeDiff = Math.floor((Date.now() - gameStartTime) / 1000); // วินาที
-            const m = Math.floor(timeDiff / 60).toString().padStart(2, '0');
-            const s = (timeDiff % 60).toString().padStart(2, '0');
-            
-            document.getElementById('summaryTime').innerText = `${m}:${s}`;
+            const timeDiff = Math.floor((Date.now() - gameStartTime) / 1000); 
+            document.getElementById('summaryTime').innerText = `${Math.floor(timeDiff / 60).toString().padStart(2, '0')}:${(timeDiff % 60).toString().padStart(2, '0')} นาที`;
             document.getElementById('summaryScore').innerText = globalScore;
-            
             document.getElementById('summaryModal').classList.remove('hidden-section');
         }
 
@@ -676,14 +753,11 @@
             showView('home-view');
         }
 
-        // --- Basic Modals ---
         function showModal(title, desc, type) {
             const m = document.getElementById('messageModal');
             document.getElementById('msgModalTitle').innerText = title;
             document.getElementById('msgModalDesc').innerHTML = desc;
-            
-            const icon = document.getElementById('msgModalIcon');
-            icon.className = type === 'error' ? "fa-solid fa-triangle-exclamation text-5xl text-danger mb-4" : "fa-solid fa-circle-check text-5xl text-secondary mb-4";
+            document.getElementById('msgModalIcon').className = type === 'error' ? "fa-solid fa-triangle-exclamation text-5xl text-danger mb-4" : "fa-solid fa-circle-check text-5xl text-secondary mb-4";
             m.classList.remove('hidden-section');
         }
         function hideModal(id) { document.getElementById(id).classList.add('hidden-section'); }
