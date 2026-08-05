@@ -68,8 +68,6 @@
             100% { opacity: 0; transform: translate(-50%, -190%) scale(1); }
         }
 
-        /* สรุปผลรายห้อง: ขยายกล่องให้กว้าง+เลื่อนได้ เพราะมีรายละเอียดเพิ่ม */
-        #summaryModal .modal-content { max-width: 560px; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col font-sans text-slate-800">
@@ -253,6 +251,36 @@
             <p id="studentHint" class="text-center text-slate-500 mt-4 animate-pulse">👆 คลิกบริเวณที่คิดว่าเป็นความเสี่ยง (คลิกถูก +10 | ผิด -5)</p>
         </div>
 
+        <!-- VIEW 5: Summary (แยกเป็นหน้าเต็มต่างหาก เพื่อให้เห็นรายละเอียดชัดเจนกว่าป๊อปอัพ) -->
+        <div id="summary-view" class="hidden-section w-full max-w-3xl fade-in">
+            <div class="text-center mb-8">
+                <i class="fa-solid fa-trophy text-7xl text-warning mb-4"></i>
+                <h2 class="text-3xl font-bold text-primary mb-2">สรุปผลการประเมิน</h2>
+                <p class="text-slate-500">คุณทำการประเมินครบทั้ง 7 บริเวณแล้ว!</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-3">
+                    <span class="text-lg font-bold text-slate-600"><i class="fa-solid fa-clock text-slate-400"></i> เวลาที่ใช้ทั้งหมด</span>
+                    <span id="summaryTime" class="text-xl font-bold text-primary">00:00</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-lg font-bold text-slate-600"><i class="fa-solid fa-star text-warning"></i> คะแนนรวม</span>
+                    <span id="summaryScore" class="text-4xl font-bold text-secondary">0</span>
+                </div>
+                <div id="summaryScoreBreakdown" class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-200"></div>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2 text-lg">
+                    <i class="fa-solid fa-list-check text-slate-400"></i> รายละเอียดคะแนนรายห้อง
+                </h3>
+                <div id="summaryMistakeDetail" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+
+            <button onclick="finishGame()" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-transform hover:scale-105">กลับหน้าหลัก</button>
+        </div>
+
     </main>
 
     <!-- Generic Message Modal -->
@@ -261,38 +289,7 @@
             <i id="msgModalIcon" class="fa-solid fa-circle-info text-5xl text-primary mb-4"></i>
             <h3 id="msgModalTitle" class="text-xl font-bold mb-2"></h3>
             <p id="msgModalDesc" class="text-slate-500 mb-6 text-base leading-relaxed"></p>
-            <button onclick="hideModal('messageModal')" class="w-full bg-primary text-white font-bold py-3 rounded-xl">ตกลง</button>
-        </div>
-    </div>
-
-    <!-- Final Summary Modal -->
-    <div id="summaryModal" class="modal-overlay hidden-section">
-        <div class="modal-content">
-            <i class="fa-solid fa-trophy text-7xl text-warning mb-6"></i>
-            <h2 class="text-3xl font-bold text-primary mb-2">สรุปผลการประเมิน</h2>
-            <p class="text-slate-500 mb-6">คุณทำการประเมินครบทั้ง 7 บริเวณแล้ว!</p>
-            
-            <div class="bg-slate-50 p-6 rounded-xl mb-6 text-left border border-slate-200 shadow-inner">
-                <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-2">
-                    <span class="text-lg font-bold text-slate-600"><i class="fa-solid fa-clock text-slate-400"></i> เวลาที่ใช้ทั้งหมด</span>
-                    <span id="summaryTime" class="text-xl font-bold text-primary">00:00</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-lg font-bold text-slate-600"><i class="fa-solid fa-star text-warning"></i> คะแนนรวม</span>
-                    <span id="summaryScore" class="text-4xl font-bold text-secondary">0</span>
-                </div>
-                <div id="summaryScoreBreakdown" class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-200"></div>
-            </div>
-
-            <!-- 🌟 รายละเอียดคะแนนแยกตามห้อง (ถูก/ผิด/ดูเฉลย) -->
-            <div class="text-left mb-6">
-                <h3 class="font-bold text-slate-700 mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-slate-400"></i> รายละเอียดคะแนนรายห้อง
-                </h3>
-                <div id="summaryMistakeDetail" class="space-y-3 pr-1"></div>
-            </div>
-
-            <button onclick="finishGame()" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-transform hover:scale-105">กลับหน้าหลัก</button>
+            <button id="msgModalConfirmBtn" onclick="confirmModal()" class="w-full bg-primary text-white font-bold py-3 rounded-xl">ตกลง</button>
         </div>
     </div>
 
@@ -333,7 +330,7 @@
         }
 
         function showView(viewId) {
-            ['home-view', 'login-view', 'teacher-view', 'student-view'].forEach(id => document.getElementById(id).classList.add('hidden-section'));
+            ['home-view', 'login-view', 'teacher-view', 'student-view', 'summary-view'].forEach(id => document.getElementById(id).classList.add('hidden-section'));
             document.getElementById(viewId).classList.remove('hidden-section');
             document.getElementById('logoutBtn').classList.toggle('hidden-section', viewId !== 'teacher-view');
         }
@@ -806,7 +803,15 @@
             renderStudent();
             
             if(hazardsFound === studentHazards.length && studentHazards.length > 0 && !isAnswersRevealed) {
-                setTimeout(() => { showModal("ผ่านด่าน!", `<div class="text-2xl mt-2 text-primary font-bold">ยอดเยี่ยมมาก!</div><br>คุณประเมินความเสี่ยงครบทุกจุดแล้ว`, "success"); }, 400);
+                const isLastRoom = (currentRoomIndex === ROOM_SEQUENCE.length - 1);
+                setTimeout(() => {
+                    showModal(
+                        "ครบแล้ว! ผ่านด่าน 🎉",
+                        `<div class="text-2xl mt-2 text-primary font-bold">ยอดเยี่ยมมาก!</div><br>คุณประเมินความเสี่ยงครบทุกจุดในห้องนี้แล้ว`,
+                        "success",
+                        { onConfirm: () => navigateRoom(1), confirmText: isLastRoom ? "ดูสรุปผล" : "ไปห้องถัดไป" }
+                    );
+                }, 400);
             }
         });
 
@@ -835,7 +840,7 @@
             document.getElementById('summaryTime').innerText = `${Math.floor(timeDiff / 60).toString().padStart(2, '0')}:${(timeDiff % 60).toString().padStart(2, '0')} นาที`;
             document.getElementById('summaryScore').innerText = globalScore;
             renderScoreBreakdown();
-            document.getElementById('summaryModal').classList.remove('hidden-section');
+            showView('summary-view');
         }
 
         // 🌟 ป้ายสถิติเล็กๆ ใช้ซ้ำทั้งภาพรวมและรายห้อง
@@ -891,16 +896,26 @@
         }
 
         function finishGame() {
-            document.getElementById('summaryModal').classList.add('hidden-section');
             showView('home-view');
         }
 
-        function showModal(title, desc, type) {
+        // 🌟 options.onConfirm: ฟังก์ชันที่จะทำงานหลังกดปุ่มยืนยัน (เช่น ไปห้องถัดไปอัตโนมัติ)
+        // 🌟 options.confirmText: เปลี่ยนข้อความปุ่ม (ค่าเริ่มต้น "ตกลง")
+        function showModal(title, desc, type, options = {}) {
+            const { onConfirm = null, confirmText = "ตกลง" } = options;
             const m = document.getElementById('messageModal');
             document.getElementById('msgModalTitle').innerText = title;
             document.getElementById('msgModalDesc').innerHTML = desc;
             document.getElementById('msgModalIcon').className = type === 'error' ? "fa-solid fa-triangle-exclamation text-5xl text-danger mb-4" : "fa-solid fa-circle-check text-5xl text-secondary mb-4";
+            document.getElementById('msgModalConfirmBtn').innerText = confirmText;
+            window.__msgModalConfirm = onConfirm;
             m.classList.remove('hidden-section');
+        }
+        function confirmModal() {
+            hideModal('messageModal');
+            const cb = window.__msgModalConfirm;
+            window.__msgModalConfirm = null;
+            if (typeof cb === 'function') cb();
         }
         function hideModal(id) { document.getElementById(id).classList.add('hidden-section'); }
     </script>
