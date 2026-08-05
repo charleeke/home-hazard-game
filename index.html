@@ -42,18 +42,30 @@
         /* 🌟 Floating Score Popup (+10 / -5) แสดงบนรูปภาพตอนคลิก */
         .score-popup {
             position: absolute;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             font-weight: 800;
-            font-size: 2rem;
+            font-size: 1.6rem;
+            padding: 8px 18px;
+            border-radius: 999px;
+            color: #fff;
             pointer-events: none;
+            white-space: nowrap;
             transform: translate(-50%, -50%);
-            animation: scorePopFloat 0.9s ease-out forwards;
-            text-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 0 3px rgba(255,255,255,0.9);
+            animation: scorePopFloat 1.15s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+            border: 2px solid rgba(255,255,255,0.85);
             z-index: 40;
         }
+        .score-popup.correct { background: linear-gradient(135deg, #10B981, #059669); }
+        .score-popup.wrong { background: linear-gradient(135deg, #EF4444, #DC2626); }
+        .score-popup.neutral { background: linear-gradient(135deg, #94A3B8, #64748B); }
         @keyframes scorePopFloat {
-            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            20%  { opacity: 1; transform: translate(-50%, -70%) scale(1.3); }
-            100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+            18%  { opacity: 1; transform: translate(-50%, -75%) scale(1.4); }
+            35%  { opacity: 1; transform: translate(-50%, -85%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -190%) scale(1); }
         }
 
         /* สรุปผลรายห้อง: ขยายกล่องให้กว้าง+เลื่อนได้ เพราะมีรายละเอียดเพิ่ม */
@@ -269,12 +281,13 @@
                     <span class="text-lg font-bold text-slate-600"><i class="fa-solid fa-star text-warning"></i> คะแนนรวม</span>
                     <span id="summaryScore" class="text-4xl font-bold text-secondary">0</span>
                 </div>
+                <div id="summaryScoreBreakdown" class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-200"></div>
             </div>
 
-            <!-- 🌟 รายละเอียดจุดที่กดผิดแยกตามห้อง -->
+            <!-- 🌟 รายละเอียดคะแนนแยกตามห้อง (ถูก/ผิด/ดูเฉลย) -->
             <div class="text-left mb-6">
                 <h3 class="font-bold text-slate-700 mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-slate-400"></i> รายละเอียดการกดผิดรายห้อง
+                    <i class="fa-solid fa-list-check text-slate-400"></i> รายละเอียดคะแนนรายห้อง
                 </h3>
                 <div id="summaryMistakeDetail" class="space-y-3 pr-1"></div>
             </div>
@@ -298,7 +311,7 @@
         let hazardsFound = 0;
         let gameStartTime = 0;
         let isAnswersRevealed = false;
-        let roomMistakes = []; // 🌟 สถิติจุดที่กดผิดของแต่ละห้อง ใช้แสดงในหน้าสรุปผล
+        let roomStats = []; // 🌟 สถิติคะแนนของแต่ละห้อง (ถูก/ผิด/ดูเฉลย) ใช้แสดงในหน้าสรุปผล
 
         function toDirectImageUrl(url) {
             if (!url) return '';
@@ -649,7 +662,7 @@
                 });
 
                 globalScore = 0; gameStartTime = Date.now();
-                roomMistakes = ROOM_SEQUENCE.map(name => ({ roomName: name, imageUrl: null, wrongClicks: [] }));
+                roomStats = ROOM_SEQUENCE.map(name => ({ roomName: name, imageUrl: null, correctCount: 0, revealedCount: 0, wrongClicks: [] }));
                 showView('student-view');
                 btnContent.innerHTML = originalHTML;
                 loadStudentRoom(0);
@@ -693,7 +706,7 @@
                 return;
             }
 
-            roomMistakes[index].imageUrl = roomData.imageUrl;
+            roomStats[index].imageUrl = roomData.imageUrl;
 
             studentHazards = (roomData.hazards || []).map(h => ({...h, isFound: false}));
             hazardsFound = 0;
@@ -729,17 +742,18 @@
             renderStudent();
         }
 
-        // 🌟 แสดงตัวเลขคะแนนลอยขึ้นตรงตำแหน่งที่คลิกบนรูปภาพ
+        // 🌟 แสดงตัวเลขคะแนนลอยขึ้นตรงตำแหน่งที่คลิกบนรูปภาพ (แบบป้ายสี ให้เห็นชัดกว่าตัวเลขเปล่าๆ)
         function showScorePopup(clientX, clientY, text, type) {
             const wrapper = document.getElementById('canvasWrapper');
             const rect = wrapper.getBoundingClientRect();
+            const icons = { correct: 'fa-check', wrong: 'fa-xmark', neutral: 'fa-eye' };
             const popup = document.createElement('div');
-            popup.className = 'score-popup ' + (type === 'correct' ? 'text-secondary' : type === 'wrong' ? 'text-danger' : 'text-slate-400');
-            popup.innerText = text;
+            popup.className = 'score-popup ' + type;
+            popup.innerHTML = `<i class="fa-solid ${icons[type] || 'fa-circle'}"></i><span>${text}</span>`;
             popup.style.left = (clientX - rect.left) + 'px';
             popup.style.top = (clientY - rect.top) + 'px';
             wrapper.appendChild(popup);
-            setTimeout(() => popup.remove(), 900);
+            setTimeout(() => popup.remove(), 1150);
         }
 
         sCanvas.addEventListener('click', (e) => {
@@ -762,12 +776,14 @@
                     hit.isFound = true; globalScore += 10; hazardsFound++;
                     playSound('correct');
                     showScorePopup(e.clientX, e.clientY, '+10', 'correct');
+                    roomStats[currentRoomIndex].correctCount++;
                     showModal("ถูกต้อง!", `<strong class="text-secondary text-xl">${hit.riskType}</strong><br><br><span class="text-sm text-slate-500">${hit.advice}</span>`, "success");
                 } else if(hit.isRevealed) {
                     // หากกดโดนจุดที่ถูก "เฉลย" ไปแล้ว (ไม่บวกคะแนน)
                     hit.isFound = true; // turn green
                     playSound('correct');
                     showScorePopup(e.clientX, e.clientY, '+0', 'neutral');
+                    roomStats[currentRoomIndex].revealedCount++;
                     showModal("เฉลยความเสี่ยง", `<strong class="text-warning text-xl">${hit.riskType}</strong><br><br><span class="text-sm text-slate-500">${hit.advice}</span><br><br><small class="text-danger">*ไม่ได้คะแนนเนื่องจากดูเฉลยไปแล้ว</small>`, "error");
                 }
             } else {
@@ -778,7 +794,7 @@
                     showScorePopup(e.clientX, e.clientY, '-5', 'wrong');
 
                     // 🌟 บันทึกตำแหน่งจุดที่กดผิดของห้องนี้ ไว้แสดงในหน้าสรุปผล
-                    roomMistakes[currentRoomIndex].wrongClicks.push({ x: clickX, y: clickY });
+                    roomStats[currentRoomIndex].wrongClicks.push({ x: clickX, y: clickY });
 
                     const cw = document.getElementById('canvasWrapper');
                     cw.classList.remove('shake-animation'); void cw.offsetWidth; cw.classList.add('shake-animation');
@@ -818,22 +834,40 @@
             const timeDiff = Math.floor((Date.now() - gameStartTime) / 1000); 
             document.getElementById('summaryTime').innerText = `${Math.floor(timeDiff / 60).toString().padStart(2, '0')}:${(timeDiff % 60).toString().padStart(2, '0')} นาที`;
             document.getElementById('summaryScore').innerText = globalScore;
-            renderMistakeBreakdown();
+            renderScoreBreakdown();
             document.getElementById('summaryModal').classList.remove('hidden-section');
         }
 
-        // 🌟 สร้างรายละเอียดจุดที่กดผิดแยกตามห้อง (จำนวนครั้ง + ตำแหน่งบนรูปย่อ)
-        function renderMistakeBreakdown() {
-            const container = document.getElementById('summaryMistakeDetail');
-            if (!container) return;
+        // 🌟 ป้ายสถิติเล็กๆ ใช้ซ้ำทั้งภาพรวมและรายห้อง
+        function statChip(iconClass, colorClass, label) {
+            return `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full ${colorClass}"><i class="fa-solid ${iconClass}"></i> ${label}</span>`;
+        }
 
-            container.innerHTML = roomMistakes.map(room => {
-                const count = room.wrongClicks.length;
+        // 🌟 สร้างรายละเอียดคะแนนแยกตามห้อง (ถูกกี่จุด / ผิดกี่ครั้ง / ดูเฉลยแล้วกดกี่จุด) + ภาพรวมทั้งหมด
+        function renderScoreBreakdown() {
+            const overviewEl = document.getElementById('summaryScoreBreakdown');
+            const detailEl = document.getElementById('summaryMistakeDetail');
+            if (!overviewEl || !detailEl) return;
+
+            const totalCorrect = roomStats.reduce((sum, r) => sum + r.correctCount, 0);
+            const totalWrong = roomStats.reduce((sum, r) => sum + r.wrongClicks.length, 0);
+            const totalRevealed = roomStats.reduce((sum, r) => sum + r.revealedCount, 0);
+
+            overviewEl.innerHTML = [
+                statChip('fa-check', 'bg-green-100 text-secondary text-sm font-bold', `กดถูก ${totalCorrect} จุด (+${totalCorrect * 10})`),
+                statChip('fa-xmark', 'bg-red-100 text-danger text-sm font-bold', `กดผิด ${totalWrong} ครั้ง (-${totalWrong * 5})`),
+                statChip('fa-eye', 'bg-slate-200 text-slate-500 text-sm font-bold', `ดูเฉลยแล้วกด ${totalRevealed} จุด (+0)`)
+            ].join('');
+
+            detailEl.innerHTML = roomStats.map(room => {
+                const wrongCount = room.wrongClicks.length;
+                const netScore = room.correctCount * 10 - wrongCount * 5;
+
                 const dots = room.wrongClicks.map(c =>
                     `<div class="absolute w-3.5 h-3.5 bg-danger rounded-full border-2 border-white shadow" style="left:${(c.x * 100).toFixed(1)}%; top:${(c.y * 100).toFixed(1)}%; transform: translate(-50%,-50%);"></div>`
                 ).join('');
 
-                const thumb = (count > 0 && room.imageUrl)
+                const thumb = (wrongCount > 0 && room.imageUrl)
                     ? `<div class="relative w-full h-28 rounded-lg overflow-hidden bg-slate-100 mt-2">
                            <img src="${toDirectImageUrl(room.imageUrl)}" class="w-full h-full object-cover" onerror="this.style.display='none'">
                            ${dots}
@@ -842,11 +876,14 @@
 
                 return `
                     <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                        <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center mb-2">
                             <span class="font-bold text-slate-700 text-sm">${room.roomName}</span>
-                            <span class="text-xs font-bold px-2 py-1 rounded-full ${count > 0 ? 'bg-red-100 text-danger' : 'bg-green-100 text-secondary'}">
-                                กดผิด ${count} ครั้ง
-                            </span>
+                            <span class="text-sm font-bold ${netScore >= 0 ? 'text-secondary' : 'text-danger'}">${netScore >= 0 ? '+' : ''}${netScore} คะแนน</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            ${statChip('fa-check', 'bg-green-100 text-secondary font-bold', `ถูก ${room.correctCount} จุด`)}
+                            ${statChip('fa-xmark', 'bg-red-100 text-danger font-bold', `ผิด ${wrongCount} ครั้ง`)}
+                            ${statChip('fa-eye', 'bg-slate-200 text-slate-500 font-bold', `ดูเฉลย ${room.revealedCount} จุด`)}
                         </div>
                         ${thumb}
                     </div>`;
