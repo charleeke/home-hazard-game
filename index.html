@@ -131,7 +131,7 @@
                 <div class="inline-block bg-blue-50 p-4 rounded-full mb-4"><i class="fa-solid fa-shield-halved text-4xl text-primary"></i></div>
                 <h2 class="text-2xl font-bold text-slate-800">Instructor Verification</h2>
             </div>
-            <input type="password" id="teacherPassword" placeholder="Password (PIN: 0000)" class="w-full text-center text-2xl tracking-widest p-4 border border-slate-300 rounded-xl mb-4 focus:ring-2 focus:ring-primary focus:outline-none">
+            <input type="password" id="teacherPassword" placeholder="Password" class="w-full text-center text-2xl tracking-widest p-4 border border-slate-300 rounded-xl mb-4 focus:ring-2 focus:ring-primary focus:outline-none">
             <p id="loginError" class="text-red-500 text-sm text-center mb-4 hidden-section">Incorrect password</p>
             <button onclick="verifyLogin()" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors">Log In</button>
             <button onclick="showView('home-view')" class="w-full mt-3 text-slate-500 hover:text-slate-700 py-2">Back to Home</button>
@@ -348,15 +348,29 @@
             document.getElementById('logoutBtn').classList.toggle('hidden-section', viewId !== 'teacher-view');
         }
 
-        function verifyLogin() {
-            if (document.getElementById('teacherPassword').value === "0000") {
-                document.getElementById('loginError').classList.add('hidden-section');
-                document.getElementById('teacherPassword').value = "";
-                showView('teacher-view');
-                loadTeacherDashboard();
-            } else { document.getElementById('loginError').classList.remove('hidden-section'); }
+        // PIN is checked on the server (Apps Script, Script Properties); it is kept only in memory while logged in
+        let editorPin = "";
+        async function verifyLogin() {
+            const input = document.getElementById('teacherPassword');
+            const errorEl = document.getElementById('loginError');
+            try {
+                const res = await fetchFromGoogle({ method: "POST", body: { action: "verify", pin: input.value } });
+                if (res.ok === true) {
+                    editorPin = input.value;
+                    errorEl.classList.add('hidden-section');
+                    input.value = "";
+                    showView('teacher-view');
+                    loadTeacherDashboard();
+                } else {
+                    errorEl.innerText = res.error || "Incorrect password";
+                    errorEl.classList.remove('hidden-section');
+                }
+            } catch (e) {
+                errorEl.innerText = e.message;
+                errorEl.classList.remove('hidden-section');
+            }
         }
-        function logout() { if(confirm('Log out of the management system?')) { cancelEditMode(); showView('home-view'); } }
+        function logout() { if(confirm('Log out of the management system?')) { editorPin = ""; cancelEditMode(); showView('home-view'); } }
 
         async function fetchFromGoogle(options = {}) {
             if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("วาง_URL")) throw new Error("GOOGLE_API_URL has not been set in the code");
@@ -625,7 +639,8 @@
                 roomType: document.getElementById('roomCategory').value,
                 imageUrl: appData.imageUrl, // ส่ง URL เดิมไปด้วย เผื่อไม่ได้อัปรูปใหม่
                 imageBase64: appData.imageBase64, mimeType: appData.mimeType, fileName: appData.fileName,
-                hazards: appData.hazards
+                hazards: appData.hazards,
+                pin: editorPin
             };
 
             try {
@@ -643,7 +658,8 @@
             if(!confirm("Are you sure you want to delete this item?")) return;
             if(appData.id === id) cancelEditMode(); // ถ้ายกเลิกตัวที่กำลังแก้อยู่
             try {
-                await fetchFromGoogle({ method: "POST", body: { action: "delete", id: id } });
+                const result = await fetchFromGoogle({ method: "POST", body: { action: "delete", id: id, pin: editorPin } });
+                if (result.error) throw new Error(result.error);
                 loadTeacherDashboard();
             } catch(e) { showModal("Delete Failed", e.message, "error"); }
         }
